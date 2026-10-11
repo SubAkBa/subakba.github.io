@@ -17,17 +17,20 @@ draft: false
 ## Architecture at a Glance
 
 ```text
-Before                           After
+Before: 서버마다 별도 Cache
+Application A ── Caffeine A
+Application B ── Caffeine B
+Application C ── Caffeine C
 
-Application A ── Caffeine A      Application A ──┐
-Application B ── Caffeine B      Application B ──┼── Redis Cluster
-Application C ── Caffeine C      Application C ──┘
+After: 모든 서버가 중앙 Cache 공유
+Application A ──┐
+Application B ──┼── Redis Cluster
+Application C ──┘
 
-서버마다 별도 Cache                 모든 서버가 중앙 Cache 공유
-변경 후 TTL 만료를 기다릴 수 있음    DB 변경 후 관련 Key를 중앙에서 제거
+DB 변경 후 관련 Key를 중앙에서 제거
 ```
 
-핵심은 Cache Hit 속도가 아니라 **모든 Application이 변경된 ACL API 정보를 같은 시점에 사용하도록 하는 것**이었다. Spring Cache Abstraction은 유지하고 CacheManager를 Caffeine에서 Redis로 전환했다.
+핵심은 Cache Hit 속도가 아니라 **변경된 ACL API 정보를 모든 Application에서 일관되게 조회하도록 하는 것**이었다. Spring Cache Abstraction은 유지하고 CacheManager를 Caffeine에서 Redis로 전환했다.
 
 ## Overview
 
