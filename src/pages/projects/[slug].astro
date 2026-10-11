@@ -47,7 +47,7 @@ const tableOfContents = headings.filter(({ depth }) => depth === 2 || depth === 
     </header>
 
     <div class="container project-reading-layout">
-      <article class="project-prose"><Content /></article>
+      <article class:list={['project-prose', { 'project-prose-case-study': project.id === 'mysql-query-performance-optimization' }]}><Content /></article>
       {tableOfContents.length > 0 && (
         <aside class="project-toc" aria-label="문서 목차">
           <p>ON THIS PAGE</p>

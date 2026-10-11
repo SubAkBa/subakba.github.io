@@ -229,6 +229,9 @@ button { cursor: pointer; }
 .project-prose #performance-summary + table { margin-top: 0; background: var(--surface); }
 .project-prose #performance-summary + table th:last-child,
 .project-prose #performance-summary + table td:last-child { color: var(--accent-strong); font-weight: 750; white-space: nowrap; }
+.project-prose-case-study h2[id^="case-"] { padding-top: 28px; border-top: 2px solid var(--accent); }
+.project-prose-case-study h3 { margin-top: 28px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 15px; letter-spacing: 0; }
+.project-prose-case-study h3[id^="result"] + ul strong { color: var(--accent-strong); font-size: 1.08em; }
 .project-toc { position: sticky; top: 28px; max-height: calc(100vh - 56px); overflow-y: auto; padding-left: 18px; border-left: 1px solid var(--line); }
 .project-toc > p { margin: 0 0 20px; color: var(--accent-strong); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 .project-toc ol { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
