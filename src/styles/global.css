@@ -225,6 +225,10 @@ button { cursor: pointer; }
 .project-prose table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 20px 0 28px; font-size: 13px; }
 .project-prose th, .project-prose td { padding: 8px 11px; border: 1px solid var(--line); text-align: left; }
 .project-prose th { background: var(--tint); color: var(--text); }
+.project-prose h2#performance-summary { margin: 0 0 18px; padding: 0; border: 0; color: var(--accent-strong); font-size: 18px; }
+.project-prose #performance-summary + table { margin-top: 0; background: var(--surface); }
+.project-prose #performance-summary + table th:last-child,
+.project-prose #performance-summary + table td:last-child { color: var(--accent-strong); font-weight: 750; white-space: nowrap; }
 .project-toc { position: sticky; top: 28px; max-height: calc(100vh - 56px); overflow-y: auto; padding-left: 18px; border-left: 1px solid var(--line); }
 .project-toc > p { margin: 0 0 20px; color: var(--accent-strong); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 .project-toc ol { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }

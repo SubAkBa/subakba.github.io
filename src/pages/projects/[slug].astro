@@ -39,7 +39,7 @@ const tableOfContents = headings.filter(({ depth }) => depth === 2 || depth === 
         <p class="project-detail-summary">{project.data.summary}</p>
         <dl class="project-detail-meta">
           <div><dt>Company</dt><dd>{project.data.company}</dd></div>
-          <div><dt>Period</dt><dd>{project.data.period}</dd></div>
+          {project.data.period && <div><dt>Period</dt><dd>{project.data.period}</dd></div>}
           {project.data.role && <div><dt>Role</dt><dd>{project.data.role}</dd></div>}
         </dl>
         <ul class="project-skills" aria-label="사용 기술">{project.data.skills.map((skill) => <li>{skill}</li>)}</ul>

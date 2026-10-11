@@ -17,7 +17,7 @@ const { title, category, summary, skills, company, period } = project.data;
     <div class="project-content">
       <h3>{title}</h3>
       <p>{summary}</p>
-      {showMeta && <p class="project-card-meta">{company}<span aria-hidden="true"> · </span>{period}</p>}
+      {showMeta && <p class="project-card-meta">{company}{period && <><span aria-hidden="true"> · </span>{period}</>}</p>}
     </div>
     <div class="project-bottom">
       <p>{skills.join(' · ')}</p>

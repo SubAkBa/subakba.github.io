@@ -7,7 +7,7 @@ const projects = defineCollection({
   schema: z.object({
     title: z.string().min(1),
     company: z.string().min(1),
-    period: z.string().min(1),
+    period: z.string().min(1).optional(),
     category: z.string().min(1),
     summary: z.string().min(1),
     skills: z.array(z.string().min(1)).min(1),
