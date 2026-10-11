@@ -1,0 +1,22 @@
+---
+import { existsSync } from 'node:fs';
+
+interface Props {
+  label: string;
+  className?: string;
+  icon?: string;
+}
+
+const { label, className = '', icon = '↗' } = Astro.props;
+const hasResume = existsSync(new URL('../../public/resume/resume.pdf', import.meta.url));
+---
+
+{hasResume ? (
+  <a class={className} href="/resume/resume.pdf" target="_blank" rel="noopener noreferrer" type="application/pdf">
+    {label} <span aria-hidden="true">{icon}</span>
+  </a>
+) : (
+  <span class:list={[className, 'resume-unavailable']} aria-label={`${label} 준비 중`}>
+    {label} <small>준비 중</small>
+  </span>
+)}

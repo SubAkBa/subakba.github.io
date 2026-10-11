@@ -1,0 +1,27 @@
+---
+import type { Project } from '../lib/projects';
+
+interface Props {
+  project: Project;
+  number: string;
+  showMeta?: boolean;
+}
+
+const { project, number, showMeta = false } = Astro.props;
+const { title, category, summary, skills, company, period } = project.data;
+---
+
+<article class="project-card">
+  <a class="project-card-link" href={`/projects/${project.id}`} aria-label={`${title} 프로젝트 보기`}>
+    <div class="project-top"><span>{number}</span><span class="project-category">{category}</span></div>
+    <div class="project-content">
+      <h3>{title}</h3>
+      <p>{summary}</p>
+      {showMeta && <p class="project-card-meta">{company}<span aria-hidden="true"> · </span>{period}</p>}
+    </div>
+    <div class="project-bottom">
+      <p>{skills.join(' · ')}</p>
+      <span class="project-cta">View Project <span aria-hidden="true">↗</span></span>
+    </div>
+  </a>
+</article>

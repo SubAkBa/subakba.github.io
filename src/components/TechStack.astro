@@ -1,0 +1,24 @@
+---
+import SectionHeading from './SectionHeading.astro';
+
+const groups = [
+  { name: 'Backend', items: ['Java', 'Spring Boot', 'Spring Batch', 'Spring WebFlux', 'JPA', 'Querydsl', 'jOOQ', 'MyBatis'] },
+  { name: 'Frontend', items: ['React', 'Vue'] },
+  { name: 'Data', items: ['MySQL', 'Oracle', 'Redis'] },
+  { name: 'Infrastructure', items: ['Kubernetes', 'Nginx'] },
+];
+---
+
+<section class="section section-tinted" id="skills">
+  <div class="container section-grid">
+    <SectionHeading number="04" title="Tech Stack" description="사용해 온 기술과 도구" />
+    <div class="section-body skill-groups">
+      {groups.map((group) => (
+        <div class="skill-group">
+          <h3>{group.name}</h3>
+          <ul>{group.items.map((item) => <li>{item}</li>)}</ul>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

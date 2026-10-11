@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Wonju Son, Backend Developer">
+  <rect width="1200" height="630" fill="#f7f7f3"/>
+  <rect x="0" y="0" width="22" height="630" fill="#206b55"/>
+  <rect x="835" y="0" width="365" height="630" fill="#163d33"/>
+  <path d="M 82 75 H 770" stroke="#d7ded6" stroke-width="2"/>
+  <text x="83" y="145" fill="#206b55" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="6">ENGINEERING PORTFOLIO</text>
+  <text x="78" y="332" fill="#192722" font-family="Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-6">WONJU SON</text>
+  <text x="83" y="418" fill="#192722" font-family="Arial, sans-serif" font-size="48" font-weight="500" letter-spacing="-1">Backend Developer</text>
+  <path d="M 82 486 H 750" stroke="#d7ded6" stroke-width="2"/>
+  <text x="84" y="550" fill="#586a62" font-family="Arial, sans-serif" font-size="29" font-weight="600">Java  ·  Spring  ·  Database</text>
+  <circle cx="1018" cy="314" r="116" fill="none" stroke="#78b998" stroke-width="2"/>
+  <text x="955" y="349" fill="#f8faf6" font-family="Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="-10">SW</text>
+  <text x="860" y="563" fill="#b8d6c7" font-family="Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="3">BACKEND ENGINEERING</text>
+</svg>

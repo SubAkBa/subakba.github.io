@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import About from '../components/About.astro';
+import Experience from '../components/Experience.astro';
+import Projects from '../components/Projects.astro';
+import TechStack from '../components/TechStack.astro';
+import Activities from '../components/Activities.astro';
+import Education from '../components/Education.astro';
+import Awards from '../components/Awards.astro';
+import Certifications from '../components/Certifications.astro';
+import Algorithm from '../components/Algorithm.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<BaseLayout title="손원주 | Backend Developer" description="Java와 Spring 기반 백엔드 개발자 손원주의 성능 최적화, DB 쿼리 튜닝, 시스템 설계 경험과 Engineering Projects를 확인하세요.">
+  <div id="top"></div>
+  <Header />
+  <main id="main">
+    <Hero />
+    <About />
+    <Experience />
+    <Projects />
+    <TechStack />
+    <Activities />
+    <Education />
+    <Awards />
+    <Certifications />
+    <Algorithm />
+  </main>
+  <Footer />
+</BaseLayout>

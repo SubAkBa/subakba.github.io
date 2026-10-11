@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<BaseLayout title="Page Not Found | 손원주" description="요청한 페이지를 찾을 수 없습니다." noindex>
+  <Header />
+  <main id="main" class="not-found">
+    <div class="container not-found-inner">
+      <p class="page-eyebrow">404 / PAGE NOT FOUND</p>
+      <h1>Page Not Found<span class="accent">.</span></h1>
+      <p>요청한 페이지를 찾을 수 없습니다.</p>
+      <a class="button button-primary" href="/">Back to Home <span aria-hidden="true">→</span></a>
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>

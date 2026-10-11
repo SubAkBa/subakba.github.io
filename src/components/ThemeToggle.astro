@@ -1,0 +1,36 @@
+<button class="theme-toggle" type="button" aria-label="다크 테마로 전환" aria-pressed="false" data-theme-toggle>
+  <span class="theme-symbol" aria-hidden="true">◐</span>
+  <span data-theme-label>Theme</span>
+</button>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  const label = button?.querySelector<HTMLElement>('[data-theme-label]');
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function currentTheme(): 'light' | 'dark' {
+    const selected = document.documentElement.dataset.theme;
+    return selected === 'light' || selected === 'dark'
+      ? selected
+      : systemTheme.matches ? 'dark' : 'light';
+  }
+
+  function updateButton() {
+    const dark = currentTheme() === 'dark';
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', dark ? '#101a17' : '#f7f7f3');
+    if (!button) return;
+    button.setAttribute('aria-pressed', String(dark));
+    button.setAttribute('aria-label', dark ? '라이트 테마로 전환' : '다크 테마로 전환');
+    if (label) label.textContent = dark ? 'Light' : 'Dark';
+  }
+
+  button?.addEventListener('click', () => {
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch (_) { /* Storage may be disabled. */ }
+    updateButton();
+  });
+
+  systemTheme.addEventListener('change', updateButton);
+  updateButton();
+</script>

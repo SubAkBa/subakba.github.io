@@ -1,0 +1,33 @@
+---
+import { existsSync } from 'node:fs';
+import ResumeLink from './ResumeLink.astro';
+
+const hasProfileImage = existsSync(new URL('../../public/images/profile.webp', import.meta.url));
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container hero-grid">
+    <div class="hero-main">
+      <p class="eyebrow"><span class="eyebrow-line"></span> Backend Developer · Seoul, Korea</p>
+      <h1 id="hero-title">안녕하세요,<br /><span>손원주</span>입니다<span class="accent">.</span></h1>
+      <p class="hero-lead">안정적인 서비스를 위해<br class="desktop-break" /> 깊이 있게 문제를 해결하는 백엔드 개발자</p>
+      <p class="hero-copy">Java와 Spring을 기반으로 성능 최적화, 데이터베이스 쿼리 튜닝, 유지보수 가능한 시스템 설계에 집중합니다.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://github.com/subakba" target="_blank" rel="noopener noreferrer">GitHub 살펴보기 <span aria-hidden="true">↗</span></a>
+        <ResumeLink label="Resume PDF" className="button button-secondary" icon="↓" />
+      </div>
+    </div>
+    <aside class="hero-aside" aria-label="주요 기술과 관심 분야">
+      <div class="hero-aside-top"><span>01 — PROFILE</span><span aria-hidden="true">↘</span></div>
+      <div class="hero-aside-content">
+        {hasProfileImage && <img class="hero-profile-image" src="/images/profile.webp" width="520" height="330" alt="손원주 프로필 사진" decoding="async" />}
+        <p class="hero-aside-label">CORE EXPERTISE</p>
+        <p class="hero-aside-title">Building reliable<br />backend systems.</p>
+      </div>
+      <div class="hero-aside-bottom">
+        <span>Java</span><span>Spring</span><span>Database</span><span>Distributed Systems</span>
+      </div>
+    </aside>
+  </div>
+  <div class="container hero-bottom"><span>PORTFOLIO / 2026</span><span>아래로 스크롤하여 더 알아보기 <span aria-hidden="true">↓</span></span></div>
+</section>
