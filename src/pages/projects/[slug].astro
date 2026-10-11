@@ -25,7 +25,9 @@ export async function getStaticPaths() {
 
 const { project, previous, next } = Astro.props;
 const { Content, headings } = await render(project);
-const tableOfContents = headings.filter(({ depth }) => depth === 2 || depth === 3);
+const tableOfContents = headings.filter(({ depth }) =>
+  depth === 2 || (depth === 3 && project.id !== 'mysql-query-performance-optimization'),
+);
 ---
 
 <BaseLayout title={`${project.data.title} | 손원주`} description={project.data.summary} ogType="article">
