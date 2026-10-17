@@ -10,20 +10,59 @@ import SectionHeading from './SectionHeading.astro';
         <div class="timeline-meta"><span class="timeline-date">2022.03 — Present</span><span class="current-badge">CURRENT</span></div>
         <h3><a href="https://www.nts-corp.com/" target="_blank" rel="noopener noreferrer">N Tech Service <span aria-hidden="true">↗</span></a></h3>
         <p class="role">Software Engineer</p>
-        <p class="item-intro">사내 DB 변경 승인, 네트워크 접근 제어, 서버 모니터링을 지원하는 운영 시스템을 담당합니다.</p>
-        <ul class="detail-list">
-          <li>DB 변경 승인·접근 제어·서버 모니터링 운영, 쿼리·ACL Endpoint 캐시 구조 개선</li>
-          <li>Open API 부하 테스트 환경 구축 및 다중 서버 환경의 실행 제어·강제 종료 기능 개선</li>
-        </ul>
+        <div class="experience-systems">
+          <section class="experience-system" aria-labelledby="object-acl-system">
+            <h4 id="object-acl-system">오브젝트 / ACL / SQL Client 권한 관리 시스템</h4>
+            <p class="system-period">2022.03 ~ 현재</p>
+            <p class="system-stack">Java · Spring Boot · Spring Batch · jOOQ · MyBatis · MySQL · Redis · Vue</p>
+            <ul class="detail-list">
+              <li>ANTLR 기반 DDL Parser 재설계 및 기존 jsql-parser 교체</li>
+              <li>대용량 권한/IP 정보 조회·수정 쿼리 성능 최적화</li>
+              <li>메일 그룹 정보 동기화 Batch Job 성능 개선</li>
+              <li>N+1 쿼리 제거를 통한 서비스 담당자 조회 API 성능 개선</li>
+              <li>Caffeine → Redis 전환을 통한 공용 캐시 구조 개선</li>
+              <li>전산원장 DML 승인·실행 통제 기능 신규 개발</li>
+              <li>Template Method 패턴 기반 DBMS별 오브젝트 변경 로직 구조 개선</li>
+              <li>ACL 자동 처리 API 데이터 구조 및 관리 기능 개선</li>
+              <li>MongoDB 오브젝트 변경 요청 유효성 검증 및 운영 권한 기능 개선</li>
+              <li>MySQL 8.0+ GIS·SRID 및 Spatial Index 지원</li>
+              <li>표준 도메인 관리 기능 및 데이터 구조 개선</li>
+              <li>티켓 담당자 공통 컴포넌트 리팩토링을 통한 중복 로직 및 변경 지점 일원화</li>
+              <li>Spring Boot 3.1 기반 프레임워크 최신화 및 보안 취약점 개선</li>
+              <li>Zookeeper 노후 서버 교체</li>
+            </ul>
+          </section>
+          <section class="experience-system" aria-labelledby="server-metrics-system">
+            <h4 id="server-metrics-system">실시간 서버 메트릭 모니터링 및 알림 시스템</h4>
+            <p class="system-period">2024.01 ~ 2026.01</p>
+            <p class="system-stack">Java · Spring Boot · Spring Batch · MyBatis · MySQL · Redis · React</p>
+            <ul class="detail-list">
+              <li>Gatling 기반 Open API 부하 테스트 환경 및 실행 관리 기능 개발</li>
+              <li>이벤트 검색 쿼리 성능 최적화</li>
+              <li>대용량 알림 조회 성능 및 데이터 구조 개선</li>
+              <li>Redis 기반 사용자별 검색 필터 저장 기능 개발</li>
+              <li>서버별 PM 설정 상태 조회 기능 개발</li>
+              <li>Webhook 알림 관리 기능 개발</li>
+              <li>모니터 수정 이력 관리 기능 개발</li>
+            </ul>
+          </section>
+        </div>
       </article>
       <article class="timeline-item">
         <div class="timeline-meta"><span class="timeline-date">2021.03 — 2022.03</span></div>
         <h3><a href="https://www.i-screamedu.co.kr/" target="_blank" rel="noopener noreferrer">i-Scream Edu <span aria-hidden="true">↗</span></a></h3>
         <p class="role">Backend Developer</p>
-        <p class="item-intro"><a class="text-link" href="https://www.hiclass.net/" target="_blank" rel="noopener noreferrer">HiClass <span aria-hidden="true">↗</span></a>는 선생님, 학부모, 학생을 연결하는 교육 서비스입니다.</p>
-        <ul class="detail-list">
-          <li>HiClass 백엔드 기능 개발에 참여</li>
-        </ul>
+        <div class="experience-systems">
+          <section class="experience-system" aria-labelledby="hiclass-system">
+            <h4 id="hiclass-system"><a class="text-link" href="https://www.hiclass.net/" target="_blank" rel="noopener noreferrer">하이클래스 웹·앱 서비스 <span aria-hidden="true">↗</span></a></h4>
+            <p class="system-stack">Java · Spring Boot · JPA · Querydsl · MySQL · Vue</p>
+            <ul class="detail-list">
+              <li>Full Text Index 적용을 통한 학교 게시글 검색 성능 개선</li>
+              <li>체험학습·결석계 등 워크시트 신청 기능 개발</li>
+              <li>퀴즈·설문·룰렛 등 사용자 참여형 이벤트 기능 개발</li>
+            </ul>
+          </section>
+        </div>
       </article>
     </div>
   </div>

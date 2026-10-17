@@ -9,7 +9,7 @@ skills:
   - Query Optimization
   - Index
 featured: true
-order: 2
+order: 1
 draft: false
 ---
 
@@ -19,10 +19,10 @@ draft: false
 
 | Case | Data Scale | Before | After |
 | --- | --- | --- | --- |
-| 복합 Index 활용 개선 | 약 3,000만 건 | 최대 약 50초 | 약 3초 |
-| 대용량 JOIN / GROUP BY 제거 | 약 1,500만 + 2,000만 건 | 10초 이상 | 평균 약 3초 |
-| JOIN Column Type 불일치 대응 | 약 200만 건 | 약 5초 | 1초 미만 |
-| Anti Join / 정렬 최적화 | 약 450만 + 24만 건 | 약 6초 | 약 1초 |
+| 복합 Index 활용 개선 | 약 3,000만 건 | 최대 약 50초 | 약 2초 |
+| 대용량 JOIN / GROUP BY 제거 | 약 1,500만 + 2,000만 건 | 10초 Timeout | 평균 약 1초 |
+| JOIN Column Type 불일치 대응 | 약 200만 + 900만 건 | 약 5초 | 1초 미만 |
+| Anti Join / 정렬 최적화 | 약 450만 + 24만 건 | 특정 조건에서 10초 이상 Timeout | 약 1초 |
 
 각 사례의 실행 시간은 해당 Query에서 확인한 값. SQL과 Table·Column 이름은 공개를 위해 일반화.
 
@@ -57,10 +57,10 @@ draft: false
 
 ### Problem
 
-- 모니터링에서 Batch 수행시간 증가 확인; Query 최대 **약 50초**
+- 모니터링에서 Batch 수행시간 증가 확인, Query 실행 시간 최대 **약 50초**
 - 기존 복합 Index: `INDEX (a, b, c)`
 - 검색 조건에서 중간 Column `b` 누락
-- 당시 실행계획에서 **Index Skip Scan** 사용; 불필요한 Index 탐색 범위 발생
+- 당시 실행계획에서 **Index Skip Scan** 사용으로 불필요한 Index 탐색 발생
 
 ```sql
 WHERE a = ?
@@ -70,12 +70,12 @@ WHERE a = ?
 ### Analysis
 
 - 기존 Index `(a, b, c)`의 Column 순서와 Query 조건 비교
-- 업무 조건상 `b`를 추가해도 결과의 의미가 달라지지 않음 확인
+- `b`의 Cardinality가 2로, 두 값을 `IN (?, ?)` 조건에 포함해도 결과의 의미가 달라지지 않음 확인
 - 신규 Index보다 기존 Index의 연속된 선두 Column 활용 우선 검토
 
 ### Solution
 
-- 검색 조건에 `b` 추가
+- 검색 조건에 `b IN (?, ?)` 추가해 복합 Index의 연속된 선두 Column 활용
 - 실행계획의 Index Access 방식 **Index Skip Scan → Index Range Scan**으로 변경
 
 ```sql
@@ -85,14 +85,14 @@ WHERE a = ?
 
 -- After
 WHERE a = ?
-  AND b = ?
+  AND b IN (?, ?)
   AND c = ?;
 ```
 
 ### Result
 
 - 신규 Index 없이 기존 복합 Index 활용 개선
-- 실행 시간 **최대 약 50초 → 약 3초**
+- 실행 시간 **최대 약 50초 → 약 2초**
 
 ## Case 2. 대용량 JOIN / GROUP BY 제거
 
@@ -103,44 +103,44 @@ WHERE a = ?
 
 ### Problem
 
-- 히스토리 조회 시 웹 요청 Timeout; 조건에 따라 **10초 이상**
+- 히스토리 조회 시 **10초로 설정된 웹 요청 Timeout** 발생
 - 최종 전송 성공 여부 판단을 위해 두 대용량 Table JOIN 후 `GROUP BY` 수행
 - 재시도 데이터 중 한 건이라도 성공하면 최종 결과를 성공으로 판단
 - 필수 문자열 검색조건에 적절한 Index 부재
 
 ### Analysis
 
-- 조회할 때마다 동일한 성공 여부 집계 반복 확인
-- 최종 성공 여부를 데이터 저장 시점에 결정할 수 있음 확인
-- SQL 미세 조정보다 Read 시점의 JOIN / 집계 자체를 제거하는 방향 선택
+- 조회에 필요한 값은 재시도 히스토리의 성공 여부였으나, 이 한 값을 위해 대용량 재시도 히스토리를 JOIN하고 `GROUP BY` 집계 반복
+- 단일 상태 값을 얻기 위한 대용량 JOIN / 집계 비용이 비효율적이라고 판단
+- SQL 미세 조정보다 상태를 알림 히스토리에 저장해 Read 시점의 JOIN / 집계 자체를 제거하는 방향 선택
 
 ### Solution
 
-- 알림 히스토리에 최종 성공 여부 `success` Column 추가
-- 히스토리 INSERT 시점에 성공 여부 함께 저장
+- 알림 히스토리에 `status` Column 추가, `SUCCESS`·`FAIL`·`RETRY` 상태 저장
 - 조회 Query에서 재시도 히스토리 JOIN 및 `GROUP BY` 제거
-- 필수·빈번한 검색조건과 Cardinality를 고려해 Index 재구성; Table Access 감소
+- 필수·빈번한 검색조건과 Cardinality를 고려해 Index 재구성으로 Table Access 감소
 
 ```text
 Before: READ → History + Retry History → JOIN → GROUP BY → 성공 여부 계산
-After:  WRITE → 성공 여부 결정 및 History에 저장
-        READ  → success 직접 조회
+After:  WRITE → History의 status에 상태 저장
+        READ  → status 직접 조회
 ```
 
 ### Result
 
 - 반복 계산을 Write 시점으로 이동하고 Read 시점의 대용량 JOIN / 집계 제거
-- 실행 시간 **10초 이상 → 평균 약 3초**
+- 실행 시간 **10초 Timeout → 평균 약 1초**
 
 ## Case 3. JOIN Column Data Type 불일치 대응
 
 ### Data Scale
 
-- 권한 정보 약 **200만 건**
+- SQL Client 권한 데이터 약 **200만 건**
+- SQL Client 권한 세부 데이터(SELECT, INSERT, UPDATE, DELETE, DDL, EXECUTE) 약 **900만 건**
 
 ### Problem
 
-- 사용자로부터 권한 조회 성능 저하 제보; 기존 Query **약 5초**
+- 사용자로부터 권한 조회 성능 저하 제보, 기존 Query 실행 시간 **약 5초**
 - JOIN Key의 Data Type 불일치: `VARCHAR ↔ BIGINT`
 - JOIN 과정에서 Index를 원하는 방식으로 활용하기 어려운 구조
 
@@ -170,10 +170,9 @@ After:  WRITE → 성공 여부 결정 및 History에 저장
 
 ### Problem
 
-- 이벤트 검색 중 웹 요청 Timeout; 기존 Query **약 6초**
+- 검색 결과가 없거나 10건 이하인 특정 조건에서 Query 실행 시간 **10초 이상**, 웹 요청 Timeout 발생
 - Event와 Server를 Outer Join한 뒤 Driven Table에 `IS NULL` 적용
 - 당시 실행계획에서 Hash Join 수행
-- `created_at` 선두 Index 부재로 최신순 결과의 별도 정렬 비용 발생
 
 ```sql
 SELECT ...
@@ -187,14 +186,16 @@ ORDER BY e.created_at DESC;
 
 - 실제 요구사항: Server에 대응 데이터가 없는 Event를 최신순으로 조회
 - `LEFT JOIN ... IS NULL`의 Anti Join 의미 확인
+- Event와 Server JOIN 시 Event당 약 10건의 Server 데이터가 매칭되어, 존재 여부만 필요한 조회에 불필요한 행 결합 발생
+- `ORDER BY created_at`에 활용할 Index가 없어 결과가 없거나 10건 이하로 페이징해도 전체 후보의 정렬 작업이 발생하고 조기 종료가 어려움
 - `event_id`가 생성 순서를 보장하고, 이를 선두 Column으로 하는 Index가 이미 있음 확인
 - 이 Query에서는 `event_id DESC`로 필요한 최신순 표현 가능
 
 ### Solution
 
-- Outer Join + `IS NULL`을 `NOT EXISTS`로 변경
-- 정렬 기준을 `created_at DESC`에서 `event_id DESC`로 변경
-- 기존 `event_id` 선두 Index를 활용해 별도 정렬 비용 감소
+- Outer Join + `IS NULL`을 `NOT EXISTS`로 변경해 Server 데이터의 존재 여부만 확인하고 중복 행 결합 연산 감소
+- 정렬 기준을 `created_at DESC`에서 Index가 있는 `event_id DESC`로 변경
+- 기존 `event_id` 선두 Index를 활용해 별도 정렬 작업 제거
 
 ```sql
 SELECT ...
@@ -210,7 +211,7 @@ ORDER BY e.event_id DESC;
 ### Result
 
 - 신규 Index 없이 Anti Join 구조와 Index 기반 정렬 활용
-- 실행 시간 **약 6초 → 약 1초**
+- 실행 시간 **특정 조건에서 10초 이상 Timeout → 약 1초**
 
 > `NOT EXISTS`가 `LEFT JOIN`보다 항상 빠르다는 의미는 아님. 당시 데이터 구조, 실행계획 및 Index 구성을 기준으로 선택.
 

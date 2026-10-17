@@ -17,7 +17,7 @@
 
   function updateButton() {
     const dark = currentTheme() === 'dark';
-    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', dark ? '#101a17' : '#f7f7f3');
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b1224' : '#ffffff');
     if (!button) return;
     button.setAttribute('aria-pressed', String(dark));
     button.setAttribute('aria-label', dark ? '라이트 테마로 전환' : '다크 테마로 전환');
