@@ -26,9 +26,9 @@ export async function getStaticPaths() {
 const { project, previous, next } = Astro.props;
 const { Content, headings } = await render(project);
 const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
+const isCacheCaseStudy = project.id === 'caffeine-to-redis';
 const tableOfContents = headings.filter(({ depth, slug }) =>
-  (depth === 2 && (!isQueryCaseStudy || !slug.startsWith('case-'))) ||
-  (depth === 3 && !isQueryCaseStudy),
+  depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isCacheCaseStudy,
 );
 ---
 
@@ -51,7 +51,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy }]}><Content /></article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content /></article>
       {tableOfContents.length > 0 && (
         <aside class="project-toc" aria-label="문서 목차">
           <p>ON THIS PAGE</p>
@@ -71,128 +71,144 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
   <Footer />
 
   <script>
+    const setupTabs = (
+      article: HTMLElement,
+      headingSelector: string,
+      ariaLabel: string,
+      labelPattern: RegExp,
+      isStage = false,
+    ) => {
+      const headings = Array.from(article.querySelectorAll<HTMLHeadingElement>(headingSelector));
+      if (headings.length < 2) return;
+
+      const tabList = document.createElement('div');
+      tabList.className = isStage ? 'project-case-tabs project-stage-tabs' : 'project-case-tabs';
+      tabList.setAttribute('role', 'tablist');
+      tabList.setAttribute('aria-label', ariaLabel);
+      headings[0].before(tabList);
+
+      const tabs: HTMLButtonElement[] = [];
+      const panels: HTMLElement[] = [];
+
+      headings.forEach((heading, index) => {
+        const panel = document.createElement('section');
+        panel.className = isStage ? 'project-case-panel project-stage-panel' : 'project-case-panel';
+        panel.id = `${heading.id}-panel`;
+        panel.setAttribute('role', 'tabpanel');
+        panel.tabIndex = 0;
+        heading.before(panel);
+
+        let node: Element | null = heading;
+        while (node && (node === heading || node.tagName !== 'H2')) {
+          const next: Element | null = node.nextElementSibling;
+          panel.append(node);
+          node = next;
+        }
+
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = isStage ? 'project-case-tab project-stage-tab' : 'project-case-tab';
+        tab.id = `${heading.id}-tab`;
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-controls', panel.id);
+        panel.setAttribute('aria-labelledby', tab.id);
+
+        const label = heading.textContent?.trim().match(labelPattern);
+        const number = document.createElement('span');
+        number.className = 'project-case-tab-number';
+        number.textContent = label?.[1] ?? `${isStage ? 'Stage' : 'Case'} ${index + 1}`;
+        const title = document.createElement('span');
+        title.className = 'project-case-tab-title';
+        title.textContent = label?.[2] ?? heading.textContent?.trim() ?? '';
+        tab.append(number, title);
+        tabList.append(tab);
+        tabs.push(tab);
+        panels.push(panel);
+      });
+
+      const selectTab = (index: number, focus = false) => {
+        tabs.forEach((tab, tabIndex) => {
+          const selected = tabIndex === index;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          panels[tabIndex].hidden = !selected;
+        });
+        if (focus) tabs[index].focus();
+      };
+
+      const selectFromHash = (scrollToTarget = false) => {
+        if (!window.location.hash) return false;
+        const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+        const panel = target?.closest<HTMLElement>('.project-case-panel');
+        if (!panel || !panels.includes(panel)) return false;
+        selectTab(panels.indexOf(panel));
+        if (scrollToTarget) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+        return true;
+      };
+
+      tabs.forEach((tab, index) => {
+        const activate = (focus = false) => {
+          selectTab(index, focus);
+          window.history.replaceState(null, '', `#${headings[index].id}`);
+          if (isStage) tabList.scrollIntoView({ block: 'start' });
+        };
+        tab.addEventListener('click', () => activate());
+        tab.addEventListener('keydown', (event) => {
+          let nextIndex: number;
+          switch (event.key) {
+            case 'ArrowRight': nextIndex = (index + 1) % tabs.length; break;
+            case 'ArrowLeft': nextIndex = (index - 1 + tabs.length) % tabs.length; break;
+            case 'Home': nextIndex = 0; break;
+            case 'End': nextIndex = tabs.length - 1; break;
+            default: return;
+          }
+          event.preventDefault();
+          tabs[nextIndex].click();
+          tabs[nextIndex].focus();
+        });
+      });
+
+      document.querySelector('.project-toc')?.addEventListener('click', (event) => {
+        const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
+        if (!link) return;
+        const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+        const panel = target?.closest<HTMLElement>('.project-case-panel');
+        if (panel && panels.includes(panel)) selectTab(panels.indexOf(panel));
+      });
+
+      if (!selectFromHash(true)) selectTab(0);
+      window.addEventListener('hashchange', () => selectFromHash(true));
+    };
+
     const caseArticle = document.querySelector<HTMLElement>('.project-prose-case-study');
     if (caseArticle) {
-      const headings = Array.from(caseArticle.querySelectorAll<HTMLHeadingElement>(':scope > h2[id^="case-"]'));
-      if (headings.length > 1) {
-        const tabList = document.createElement('div');
-        tabList.className = 'project-case-tabs';
-        tabList.setAttribute('role', 'tablist');
-        tabList.setAttribute('aria-label', '쿼리 튜닝 사례');
-        headings[0].before(tabList);
+      const wrapSection = (id: string, className = '') => {
+        const heading = document.getElementById(id);
+        if (!heading || heading.parentElement !== caseArticle) return;
+        const section = document.createElement('section');
+        section.className = `project-document-section ${className}`.trim();
+        section.setAttribute('aria-labelledby', id);
+        heading.before(section);
 
-        const tabs: HTMLButtonElement[] = [];
-        const panels: HTMLElement[] = [];
+        let node: Element | null = heading;
+        while (node && (node === heading || node.tagName !== 'H2')) {
+          const next: Element | null = node.nextElementSibling;
+          section.append(node);
+          node = next;
+        }
+      };
 
-        headings.forEach((heading, index) => {
-          const panel = document.createElement('section');
-          panel.className = 'project-case-panel';
-          panel.id = `${heading.id}-panel`;
-          panel.setAttribute('role', 'tabpanel');
-          panel.tabIndex = 0;
-          heading.before(panel);
+      wrapSection('performance-summary', 'project-summary-section');
+      wrapSection('overview');
+      wrapSection('tuning-cases', 'project-case-section');
+      wrapSection('technical-decisions');
+      wrapSection('lessons-learned');
+      setupTabs(caseArticle, ':scope > h2[id^="case-"]', '쿼리 튜닝 사례', /^(Case\s+\d+)\.\s*(.*)$/);
+    }
 
-          let node: Element | null = heading;
-          while (node && (node === heading || node.tagName !== 'H2')) {
-            const next: Element | null = node.nextElementSibling;
-            panel.append(node);
-            node = next;
-          }
-
-          const tab = document.createElement('button');
-          tab.type = 'button';
-          tab.className = 'project-case-tab';
-          tab.id = `${heading.id}-tab`;
-          tab.setAttribute('role', 'tab');
-          tab.setAttribute('aria-controls', panel.id);
-          panel.setAttribute('aria-labelledby', tab.id);
-
-          const label = heading.textContent?.trim().match(/^(Case\s+\d+)\.\s*(.*)$/);
-          const number = document.createElement('span');
-          number.className = 'project-case-tab-number';
-          number.textContent = label?.[1] ?? `Case ${index + 1}`;
-          const title = document.createElement('span');
-          title.className = 'project-case-tab-title';
-          title.textContent = label?.[2] ?? heading.textContent?.trim() ?? '';
-          tab.append(number, title);
-          tabList.append(tab);
-          tabs.push(tab);
-          panels.push(panel);
-        });
-
-        const wrapSection = (id: string, className = '') => {
-          const heading = document.getElementById(id);
-          if (!heading || heading.parentElement !== caseArticle) return;
-          const section = document.createElement('section');
-          section.className = `project-document-section ${className}`.trim();
-          section.setAttribute('aria-labelledby', id);
-          heading.before(section);
-
-          let node: Element | null = heading;
-          while (node && (node === heading || node.tagName !== 'H2')) {
-            const next: Element | null = node.nextElementSibling;
-            section.append(node);
-            node = next;
-          }
-        };
-
-        wrapSection('performance-summary', 'project-summary-section');
-        wrapSection('overview');
-        wrapSection('tuning-cases', 'project-case-section');
-        wrapSection('technical-decisions');
-        wrapSection('lessons-learned');
-
-        const selectCase = (index: number, focus = false) => {
-          tabs.forEach((tab, tabIndex) => {
-            const selected = tabIndex === index;
-            tab.setAttribute('aria-selected', String(selected));
-            tab.tabIndex = selected ? 0 : -1;
-            panels[tabIndex].hidden = !selected;
-          });
-          if (focus) tabs[index].focus();
-        };
-
-        const selectCaseFromHash = (scrollToTarget = false) => {
-          if (!window.location.hash) return false;
-          const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
-          const panel = target?.closest<HTMLElement>('.project-case-panel');
-          if (!panel) return false;
-          selectCase(panels.indexOf(panel));
-          if (scrollToTarget) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
-          return true;
-        };
-
-        tabs.forEach((tab, index) => {
-          tab.addEventListener('click', () => {
-            selectCase(index);
-            window.history.replaceState(null, '', `#${headings[index].id}`);
-          });
-          tab.addEventListener('keydown', (event) => {
-            let nextIndex: number;
-            switch (event.key) {
-              case 'ArrowRight': nextIndex = (index + 1) % tabs.length; break;
-              case 'ArrowLeft': nextIndex = (index - 1 + tabs.length) % tabs.length; break;
-              case 'Home': nextIndex = 0; break;
-              case 'End': nextIndex = tabs.length - 1; break;
-              default: return;
-            }
-            event.preventDefault();
-            selectCase(nextIndex, true);
-            window.history.replaceState(null, '', `#${headings[nextIndex].id}`);
-          });
-        });
-
-        document.querySelector('.project-toc')?.addEventListener('click', (event) => {
-          const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
-          if (!link) return;
-          const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
-          const panel = target?.closest<HTMLElement>('.project-case-panel');
-          if (panel) selectCase(panels.indexOf(panel));
-        });
-
-        if (!selectCaseFromHash(true)) selectCase(0);
-        window.addEventListener('hashchange', () => selectCaseFromHash(true));
-      }
+    const cacheArticle = document.querySelector<HTMLElement>('.project-prose-cache-study');
+    if (cacheArticle) {
+      setupTabs(cacheArticle, ':scope > h2[id^="stage-"]', '캐시 개선 단계', /^(Stage\s+\d+)\.\s*(.*)$/, true);
     }
 
     document.querySelectorAll<HTMLPreElement>('.project-prose pre.astro-code').forEach((pre) => {
@@ -226,5 +242,15 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
       pre.before(frame);
       frame.append(toolbar, pre);
     });
+
+    const handlerFrame = cacheArticle?.querySelector<HTMLElement>('[role="tabpanel"][id^="stage-3-"] .code-frame');
+    if (handlerFrame) {
+      const details = document.createElement('details');
+      details.className = 'project-code-details';
+      const summary = document.createElement('summary');
+      summary.textContent = 'CacheErrorHandler 전체 코드 보기';
+      handlerFrame.before(details);
+      details.append(summary, handlerFrame);
+    }
   </script>
 </BaseLayout>
