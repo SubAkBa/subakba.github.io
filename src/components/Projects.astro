@@ -8,7 +8,7 @@ const projects = await getFeaturedProjects();
 
 <section class="section" id="projects" aria-labelledby="projects-title">
   <div class="container">
-    <div class="projects-heading"><SectionHeading number="03" title="Selected Engineering Projects" description="문제를 정의하고 개선한 경험" id="projects-title" /><span class="phase-note">실제 엔지니어링 업무를 정리한 경력기술서</span></div>
+    <div class="projects-heading"><SectionHeading number="04" title="Projects" description="문제를 정의하고 개선한 경험" id="projects-title" /><span class="phase-note">실제 엔지니어링 업무를 정리한 경력기술서</span></div>
     {projects.length > 0 && <div class:list={['project-grid', { 'project-grid-single': projects.length === 1, 'project-grid-four': projects.length === 4 }]}>
       {projects.map((project, index) => <ProjectCard project={project} number={String(index + 1).padStart(2, '0')} />)}
     </div>}
