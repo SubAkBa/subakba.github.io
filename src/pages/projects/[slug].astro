@@ -3,6 +3,7 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import QueryCaseAnimation from '../../components/QueryCaseAnimation.astro';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -53,6 +54,13 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
 
     <div class="container project-reading-layout">
       <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content /></article>
+      {isQueryCaseStudy && (
+        <div class="query-animation-source" aria-hidden="true">
+          <QueryCaseAnimation caseNumber={1} />
+          <QueryCaseAnimation caseNumber={2} />
+          <QueryCaseAnimation caseNumber={3} />
+        </div>
+      )}
       {tableOfContents.length > 0 && (
         <aside class="project-toc" aria-label="문서 목차">
           <p>ON THIS PAGE</p>
@@ -205,6 +213,102 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
       wrapSection('technical-decisions');
       wrapSection('lessons-learned');
       setupTabs(caseArticle, ':scope > h2[id^="case-"]', '쿼리 튜닝 사례', /^(Case\s+\d+)\.\s*(.*)$/);
+
+      document.querySelectorAll<HTMLElement>('[data-query-animation]').forEach((animation) => {
+        const caseId = animation.dataset.caseId;
+        const heading = caseArticle.querySelector<HTMLHeadingElement>(`.project-case-panel > h2[id^="${caseId}-"]`);
+        if (!heading) return;
+        heading.after(animation);
+        animation.removeAttribute('aria-hidden');
+
+        type Frame = {
+          side: 'before' | 'after';
+          explanation: string;
+          checking?: string[];
+          matched?: string[];
+          skipped?: string[];
+        };
+        const frames = JSON.parse(animation.dataset.frames ?? '[]') as Frame[];
+        if (!frames.length) return;
+        const narration = animation.querySelector<HTMLElement>('[data-narration]');
+        const counter = animation.querySelector<HTMLElement>('[data-frame-counter]');
+        const progress = animation.querySelector<HTMLElement>('[data-progress]');
+        const playButton = animation.querySelector<HTMLButtonElement>('[data-action="play"]');
+        let current = 0;
+        let timer: number | undefined;
+
+        const renderFrame = () => {
+          const frame = frames[current];
+          const visited = new Set(frames.slice(0, current).flatMap((item) => item.checking ?? []));
+          const matched = new Set(frames.slice(0, current + 1).flatMap((item) => item.matched ?? []));
+          const skipped = new Set(frames.slice(0, current + 1).flatMap((item) => item.skipped ?? []));
+          const checking = new Set(frame.checking ?? []);
+          animation.querySelectorAll<HTMLElement>('[data-side]').forEach((lane) => {
+            lane.classList.toggle('is-current', lane.dataset.side === frame.side);
+          });
+          animation.querySelectorAll<HTMLElement>('[data-node]').forEach((node) => {
+            const id = node.dataset.node ?? '';
+            node.classList.toggle('is-checking', checking.has(id));
+            node.classList.toggle('is-visited', visited.has(id));
+            node.classList.toggle('is-matched', matched.has(id));
+            node.classList.toggle('is-skipped', skipped.has(id));
+          });
+          if (narration) narration.textContent = frame.explanation;
+          if (counter) counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(frames.length).padStart(2, '0')}`;
+          if (progress) progress.style.width = `${((current + 1) / frames.length) * 100}%`;
+        };
+
+        const pause = () => {
+          window.clearInterval(timer);
+          timer = undefined;
+          if (playButton) {
+            playButton.textContent = current === frames.length - 1 ? '다시 보기 ↺' : '재생 ▶';
+            playButton.setAttribute('aria-label', current === frames.length - 1 ? '애니메이션 다시 보기' : '애니메이션 재생');
+          }
+        };
+
+        const play = () => {
+          if (timer) return;
+          if (current === frames.length - 1) current = 0;
+          renderFrame();
+          if (playButton) {
+            playButton.textContent = '일시정지 Ⅱ';
+            playButton.setAttribute('aria-label', '애니메이션 일시정지');
+          }
+          timer = window.setInterval(() => {
+            if (current === frames.length - 1) {
+              pause();
+              return;
+            }
+            current += 1;
+            renderFrame();
+          }, 1700);
+        };
+
+        animation.querySelector<HTMLButtonElement>('[data-action="previous"]')?.addEventListener('click', () => {
+          pause();
+          current = Math.max(0, current - 1);
+          renderFrame();
+          pause();
+        });
+        animation.querySelector<HTMLButtonElement>('[data-action="next"]')?.addEventListener('click', () => {
+          pause();
+          current = Math.min(frames.length - 1, current + 1);
+          renderFrame();
+          pause();
+        });
+        playButton?.addEventListener('click', () => timer ? pause() : play());
+        renderFrame();
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          const observer = new IntersectionObserver((entries) => {
+            const visible = entries[0].isIntersecting && !animation.closest<HTMLElement>('.project-case-panel')?.hidden;
+            if (visible && current === 0) play();
+            if (!visible && timer) pause();
+          }, { threshold: 0.35 });
+          observer.observe(animation);
+        }
+      });
     }
 
     const stageArticle = document.querySelector<HTMLElement>('.project-prose-stage-study');
