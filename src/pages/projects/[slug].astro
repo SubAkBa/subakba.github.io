@@ -27,8 +27,9 @@ const { project, previous, next } = Astro.props;
 const { Content, headings } = await render(project);
 const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
 const isCacheCaseStudy = project.id === 'caffeine-to-redis';
+const isStageStudy = isCacheCaseStudy || project.id === 'open-api-load-testing';
 const tableOfContents = headings.filter(({ depth, slug }) =>
-  depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isCacheCaseStudy,
+  depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isStageStudy,
 );
 ---
 
@@ -51,7 +52,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content /></article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content /></article>
       {tableOfContents.length > 0 && (
         <aside class="project-toc" aria-label="문서 목차">
           <p>ON THIS PAGE</p>
@@ -206,9 +207,10 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
       setupTabs(caseArticle, ':scope > h2[id^="case-"]', '쿼리 튜닝 사례', /^(Case\s+\d+)\.\s*(.*)$/);
     }
 
-    const cacheArticle = document.querySelector<HTMLElement>('.project-prose-cache-study');
-    if (cacheArticle) {
-      setupTabs(cacheArticle, ':scope > h2[id^="stage-"]', '캐시 개선 단계', /^(Stage\s+\d+)\.\s*(.*)$/, true);
+    const stageArticle = document.querySelector<HTMLElement>('.project-prose-stage-study');
+    if (stageArticle) {
+      const stageLabel = stageArticle.classList.contains('project-prose-cache-study') ? '캐시 개선 단계' : '부하 테스트 개선 단계';
+      setupTabs(stageArticle, ':scope > h2[id^="stage-"]', stageLabel, /^(Stage\s+\d+)\.\s*(.*)$/, true);
     }
 
     document.querySelectorAll<HTMLPreElement>('.project-prose pre.astro-code').forEach((pre) => {
@@ -243,7 +245,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
       frame.append(toolbar, pre);
     });
 
-    const handlerFrame = cacheArticle?.querySelector<HTMLElement>('[role="tabpanel"][id^="stage-3-"] .code-frame');
+    const handlerFrame = document.querySelector<HTMLElement>('.project-prose-cache-study [role="tabpanel"][id^="stage-3-"] .code-frame');
     if (handlerFrame) {
       const details = document.createElement('details');
       details.className = 'project-code-details';

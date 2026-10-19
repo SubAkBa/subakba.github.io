@@ -246,16 +246,16 @@ button { cursor: pointer; }
 .project-prose-case-study .project-case-panel > h2:first-child { margin-top: 0; border-top: 0; }
 .project-prose-case-study h3 { margin-top: 28px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 15px; letter-spacing: 0; }
 .project-prose-case-study h3[id^="result"] + ul strong { color: var(--accent-strong); font-size: 1.08em; }
-.project-prose-cache-study > h2:first-of-type { margin-top: 28px; padding-top: 0; border: 0; color: var(--accent-strong); font-size: 18px; }
-.project-prose-cache-study .project-journey { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 18px 0 24px; padding: 0; list-style: none; }
+.project-prose-stage-study > h2:first-of-type { margin-top: 28px; padding-top: 0; border: 0; color: var(--accent-strong); font-size: 18px; }
+.project-prose-stage-study .project-journey { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 18px 0 24px; padding: 0; list-style: none; }
 .project-journey li { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 17px 16px; border: 1px solid var(--line); background: var(--surface); line-height: 1.5; }
 .project-journey strong { color: var(--accent-strong); font-size: 12px; }
 .project-journey span { color: var(--text); font-size: 13px; font-weight: 600; word-break: keep-all; }
 .project-stage-tabs { position: sticky; top: 0; z-index: 3; margin-top: 26px; padding-top: 8px; background: var(--bg); }
 .project-stage-tab { min-height: 72px; }
-.project-prose-cache-study .project-stage-panel > h2:first-child { margin: 0; padding-top: 24px; border: 0; font-size: 24px; }
-.project-prose-cache-study .project-stage-panel > h2 + p { margin: 16px 0 26px; padding: 13px 15px; border-left: 3px solid var(--accent); background: var(--tint); color: var(--text); font-weight: 600; }
-.project-prose-cache-study .project-stage-panel h3 { margin-top: 30px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 17px; letter-spacing: 0; }
+.project-prose-stage-study .project-stage-panel > h2:first-child { margin: 0; padding-top: 24px; border: 0; font-size: 24px; }
+.project-prose-stage-study .project-stage-panel > h2 + p { margin: 16px 0 26px; padding: 13px 15px; border-left: 3px solid var(--accent); background: var(--tint); color: var(--text); font-weight: 600; }
+.project-prose-stage-study .project-stage-panel h3 { margin-top: 30px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 17px; letter-spacing: 0; }
 .project-code-details { margin: 22px 0 30px; border: 1px solid var(--line); background: var(--surface); }
 .project-code-details > summary { padding: 12px 15px; color: var(--accent-strong); cursor: pointer; font-size: 13px; font-weight: 700; }
 .project-code-details > .code-frame { margin: 0; border: 0; border-top: 1px solid var(--line); }
@@ -365,7 +365,7 @@ button { cursor: pointer; }
   .project-reading-layout { padding-top: 40px; }
   .project-prose h2 { font-size: 23px; }
   .project-prose-case-study .project-document-section { padding: 20px 16px; }
-  .project-prose-cache-study .project-journey { grid-template-columns: 1fr; gap: 7px; }
+  .project-prose-stage-study .project-journey { grid-template-columns: 1fr; gap: 7px; }
   .project-journey li { gap: 3px; padding: 11px 13px; }
   .project-case-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .project-case-tab { padding: 11px 9px; }
