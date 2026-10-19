@@ -148,8 +148,16 @@ LIMIT :page_size;
 
 ### Step 2. Index 순서로 정렬
 
-- 1단계 이후에도 `ORDER BY notification_no DESC`는 조회에 사용한 Index 순서와 맞지 않아 별도 정렬이 필요했음
-- 결과가 없거나 10건 이하인 조건에서는 일찍 조회를 끝내기 어려웠고, 정렬에 맞는 Index를 쓰지 못해 조회 범위 전체를 훑으며 Timeout이 계속 발생
+조회에 사용한 기존 Index는 `event_time`이 선두 Column. 아래는 선두 Column만 표시한 개념 예시.
+
+```text
+기존 Index: (event_time, ...)
+기존 정렬:  ORDER BY notification_no DESC
+변경 정렬:  ORDER BY event_time DESC
+```
+
+- 1단계 이후에도 `ORDER BY notification_no DESC`는 `event_time` 선두 Index의 순서와 맞지 않아 Index 순서로 결과를 읽으며 정렬을 생략하거나, `LIMIT` 건수를 채운 시점에 조회를 조기 종료(early stop)할 수 없었음
+- 검색 결과가 없거나 `LIMIT` 건수 미만인 조건에서는 필요한 행 수를 채우지 못해 조회 범위 전체를 확인해야 했고 Timeout이 계속 발생
 - `event_time`은 필수 `WHERE` 조건에 사용하며, 이 Query에서 `event_time DESC`도 필요한 최신순을 표현함. 정렬의 선두 Column을 `notification_no`에서 `event_time`으로 바꿔 Index 순서로 결과를 읽도록 수정
 
 ```sql
