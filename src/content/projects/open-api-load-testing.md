@@ -21,7 +21,7 @@ draft: false
 
 Open API의 처리 가능한 요청량을 확인하고 Rate Limit 정책 수립에 활용할 부하 테스트 환경 필요. 기존에는 개발자가 테스트 코드를 직접 작성·실행해야 해 조건을 바꿔 반복하거나 운영 담당자가 사용하기 어려웠음.
 
-JMeter, k6, Gatling 등을 검토하고 Java DSL 기반 시나리오 작성과 기존 Java/Spring Boot 시스템과의 연계가 용이한 Gatling 선정. 웹에서 조건을 설정해 테스트를 실행하는 환경을 구축한 뒤, 실제 운영 구조에서 발견한 문제를 개선.
+웹에서 조건을 설정해 테스트를 실행하는 환경을 구축한 뒤, 실제 운영 구조에서 발견한 문제를 개선.
 
 ## 개선 흐름
 
@@ -36,6 +36,26 @@ JMeter, k6, Gatling 등을 검토하고 Java DSL 기반 시나리오 작성과 �
 ## Stage 1. 부하 테스트 환경 구축
 
 웹에서 요청 조건과 부하 패턴을 설정하고, 별도 Gatling 프로세스로 Open API에 테스트 트래픽 생성.
+
+### 부하 테스트 도구 선정
+
+정해진 시나리오를 반복 실행하는 대신 웹에서 입력한 URL·HTTP Method·Header·Body·사용자 수·Injection 방식을 실행 시점에 적용해야 했음. JMeter, k6, Gatling을 기존 Java/Spring Boot 환경과 동적 테스트 구성 요건을 기준으로 비교.
+
+| 도구 | 특징 | 검토 결과 |
+| --- | --- | --- |
+| JMeter | GUI 기반 시나리오 구성 | 테스트 작성은 편리하지만 웹 입력값으로 시나리오를 코드에서 동적으로 구성하는 구조에는 적합도가 낮다고 판단 |
+| k6 | JavaScript 기반 Test as Code | 테스트 코드가 간결하지만 기존 Java 프로젝트와 별도의 언어·실행 환경 관리 필요 |
+| Gatling | Java DSL 기반 Test as Code | 기존 Java 빌드 환경을 활용하면서 요청과 Injection Profile을 코드로 구성하고 외부 파라미터를 적용하기 용이 |
+
+Gatling Java DSL에서는 Backend API가 전달한 값을 System Property로 읽어 테스트 조건에 적용할 수 있음. 다음은 전달 방식의 일반화된 예시.
+
+```java
+String targetUrl = System.getProperty("url");
+String httpMethod = System.getProperty("httpMethod");
+int users = Integer.parseInt(System.getProperty("users"));
+```
+
+**기존 Java 개발 환경과의 호환성, 테스트 조건의 동적 구성, 다양한 Injection Profile 지원**을 기준으로 Gatling 선정.
 
 ### 반복 테스트를 위한 웹 환경
 
