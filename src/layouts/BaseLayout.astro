@@ -42,7 +42,7 @@ const ogImage = new URL('/og-image.png', Astro.site ?? Astro.url).toString();
           document.documentElement.dataset.theme = saved;
         }
         const dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b1224' : '#ffffff');
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#191f28' : '#ffffff');
       } catch (_) {
         // System preference still applies when storage is unavailable.
       }

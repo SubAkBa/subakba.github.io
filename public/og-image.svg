@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Wonju Son, Backend Developer">
   <rect width="1200" height="630" fill="#ffffff"/>
-  <rect x="0" y="0" width="22" height="630" fill="#2456cf"/>
-  <rect x="835" y="0" width="365" height="630" fill="#183c9f"/>
-  <path d="M 82 75 H 770" stroke="#cfdbf4" stroke-width="2"/>
-  <text x="83" y="145" fill="#2456cf" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="6">ENGINEERING PORTFOLIO</text>
-  <text x="78" y="332" fill="#15213d" font-family="Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-6">WONJU SON</text>
-  <text x="83" y="418" fill="#15213d" font-family="Arial, sans-serif" font-size="48" font-weight="500" letter-spacing="-1">Backend Developer</text>
-  <path d="M 82 486 H 750" stroke="#cfdbf4" stroke-width="2"/>
-  <text x="84" y="550" fill="#485a78" font-family="Arial, sans-serif" font-size="29" font-weight="600">Java  ·  Spring  ·  Database</text>
-  <circle cx="1018" cy="314" r="116" fill="none" stroke="#a7bdff" stroke-width="2"/>
-  <text x="955" y="349" fill="#f8faff" font-family="Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="-10">SW</text>
-  <text x="860" y="563" fill="#cbd8ff" font-family="Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="3">BACKEND ENGINEERING</text>
+  <rect x="0" y="0" width="22" height="630" fill="#3182f6"/>
+  <rect x="835" y="0" width="365" height="630" fill="#1b64da"/>
+  <path d="M 82 75 H 770" stroke="#d9e2ec" stroke-width="2"/>
+  <text x="83" y="145" fill="#1b64da" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="6">ENGINEERING PORTFOLIO</text>
+  <text x="78" y="332" fill="#191f28" font-family="Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-6">WONJU SON</text>
+  <text x="83" y="418" fill="#191f28" font-family="Arial, sans-serif" font-size="48" font-weight="500" letter-spacing="-1">Backend Developer</text>
+  <path d="M 82 486 H 750" stroke="#d9e2ec" stroke-width="2"/>
+  <text x="84" y="550" fill="#4e5968" font-family="Arial, sans-serif" font-size="29" font-weight="600">Java  ·  Spring  ·  Database</text>
+  <circle cx="1018" cy="314" r="116" fill="none" stroke="#a9c9f0" stroke-width="2"/>
+  <text x="955" y="349" fill="#ffffff" font-family="Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="-10">SW</text>
+  <text x="860" y="563" fill="#e7f0ff" font-family="Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="3">BACKEND ENGINEERING</text>
 </svg>
