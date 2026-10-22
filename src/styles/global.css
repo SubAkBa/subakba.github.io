@@ -359,6 +359,47 @@ button { cursor: pointer; }
 .query-animation-progress { width: 100%; height: 5px; background: var(--line); }
 .query-animation-progress span { display: block; width: 12.5%; height: 100%; background: var(--accent); transition: width .35s ease; }
 .query-animation-note { margin: 12px 0 0 !important; color: var(--subtle); font-size: 10px; line-height: 1.6; }
+.project-prose .service-animation h3 { margin: 0; padding: 0; border: 0; background: none; font-size: 18px; letter-spacing: -.035em; }
+.service-animation .query-animation-grid { align-items: stretch; }
+.service-animation .query-animation-lane { display: flex; flex-direction: column; }
+.service-flow { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; }
+.service-flow-label { display: flex; justify-content: space-between; gap: 6px; color: var(--subtle); font-size: 10px; font-weight: 800; line-height: 1.4; }
+.service-flow-label span { color: var(--query-before); white-space: nowrap; }
+.service-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 5px; }
+.service-list > span { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 5px 2px; border: 1px solid var(--line); background: var(--surface); }
+.service-list b { font-size: 11px; }
+.service-list small { font-size: 9px; }
+.service-flow-arrow { color: var(--accent-strong); font-size: 16px; font-weight: 850; line-height: 1; text-align: center; }
+.service-loop-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 7px; border: 1px dashed var(--line); color: var(--subtle); font-size: 9px; font-weight: 750; }
+.service-loop-title code { color: var(--text); font-size: 10px; }
+.service-loop-rows { display: grid; gap: 5px; }
+.service-loop-row { display: grid; grid-template-columns: 77px minmax(0, 1fr); gap: 5px; }
+.service-person { display: flex; flex-direction: column; gap: 1px; min-height: 48px; }
+.service-person b { font-size: 10px; }
+.service-query-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.service-query-pair .data-viz-block { min-height: 48px; flex-wrap: wrap; gap: 3px; padding: 4px 2px; font-size: 9px; }
+.service-query-pair .data-viz-block small { padding: 1px 3px; border-radius: 2px; background: color-mix(in srgb, var(--query-before) 14%, var(--surface)); color: var(--query-before); font-size: 8px; font-weight: 800; }
+.service-repeat-query { border-style: dashed; }
+.service-repeat-query em, .service-assembly em { width: 100%; color: var(--query-before); font-size: 8px; font-style: normal; font-weight: 850; line-height: 1; }
+.service-outcome { margin-top: auto; padding: 8px; border: 1px solid var(--line); background: var(--tint); color: var(--text); font-size: 10px; font-weight: 650; text-align: center; }
+.service-outcome b { display: block; margin-top: 2px; font-size: 12px; }
+.service-outcome-before b { color: var(--query-before); }
+.service-outcome-after b { color: var(--accent-strong); }
+.service-batch-queries { display: grid; gap: 5px; }
+.service-batch-queries .data-viz-block { display: grid; grid-template-columns: 45px minmax(0, 1fr) auto; gap: 5px; min-height: 34px; justify-content: start; text-align: left; }
+.service-batch-queries b { color: var(--accent-strong); font-size: 10px; }
+.service-batch-queries span { font-size: 10px; }
+.service-batch-queries small { font-size: 9px; white-space: nowrap; }
+.service-map-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.service-map { min-height: 57px; flex-direction: column; gap: 4px; }
+.service-map small { font-size: 9px; }
+.service-map b { color: var(--accent-strong); font-size: 12px; letter-spacing: .04em; }
+.service-assembly { display: grid; gap: 5px; }
+.service-assembly .data-viz-block { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; min-height: 31px; gap: 4px; justify-content: start; padding: 5px; text-align: left; }
+.service-assembly b { color: var(--accent-strong); font-size: 10px; }
+.service-assembly span { font-size: 9px; }
+.service-assembly em { width: auto; white-space: nowrap; }
+.service-animation .query-animation-progress { max-width: 155px; }
 .project-prose-case-study .project-case-panel > h2:first-child { margin-top: 0; border-top: 0; }
 .project-prose-case-study h3 { margin-top: 28px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 15px; letter-spacing: 0; }
 .project-prose-case-study h3[id^="result"] + ul strong { color: var(--accent-strong); font-size: 1.08em; }

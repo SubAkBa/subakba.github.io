@@ -1,0 +1,159 @@
+---
+const users = [
+  { employee: '101', registrant: '901' },
+  { employee: '102', registrant: '902' },
+  { employee: '103', registrant: '901' },
+];
+
+const frames = [
+  { side: 'before', explanation: '① 서비스 유저 목록을 한 번 조회해 사번과 등록자 사번을 가져옵니다.', checking: ['before-list'], matched: ['before-list'] },
+  { side: 'before', explanation: '② for 문의 첫 번째 유저: 상세정보와 등록자 정보를 각각 SQL로 조회합니다.', checking: ['before-user-101', 'before-detail-101', 'before-registrant-101'], matched: ['before-user-101', 'before-detail-101', 'before-registrant-101'] },
+  { side: 'before', explanation: '③ 두 번째 유저도 같은 두 SQL을 실행합니다. 유저 수만큼 DB 왕복이 늘어납니다.', checking: ['before-user-102', 'before-detail-102', 'before-registrant-102'], matched: ['before-user-102', 'before-detail-102', 'before-registrant-102'] },
+  { side: 'before', explanation: '④ 세 번째 유저의 등록자 901은 이미 조회했지만, 반복문 안에서 다시 SQL을 실행합니다.', checking: ['before-user-103', 'before-detail-103', 'before-registrant-103'], matched: ['before-user-103', 'before-detail-103', 'before-registrant-103'] },
+  { side: 'after', explanation: '① 서비스 유저 3명을 한 번에 조회합니다. 이후 조회도 유저별 반복문 밖에서 실행합니다.', checking: ['after-list'], matched: ['after-list'] },
+  { side: 'after', explanation: '② 상세정보를 한 번에 조회해 사번 101·102·103을 키로 저장합니다.', checking: ['after-details', 'after-detail-map'], matched: ['after-details', 'after-detail-map'] },
+  { side: 'after', explanation: '③ 등록자 정보를 한 번에 조회해 사번 901·902를 키로 저장합니다. SQL은 여기서 끝납니다.', checking: ['after-registrants', 'after-registrant-map'], matched: ['after-registrants', 'after-registrant-map'] },
+  { side: 'after', explanation: '④ for 문에서 각 서비스 유저의 사번으로 상세 Map을, 등록자 사번으로 등록자 Map을 찾습니다.', checking: ['after-assemble-101', 'after-assemble-102'], matched: ['after-assemble-101', 'after-assemble-102'] },
+  { side: 'after', explanation: '⑤ 세 번째 유저도 등록자 901을 Map에서 재사용합니다. 반복문 안의 추가 SQL은 0회입니다.', checking: ['after-assemble-103', 'after-registrant-map'], matched: ['after-assemble-103'] },
+];
+---
+
+<section class="query-animation service-animation" data-service-user-animation data-frames={JSON.stringify(frames)} aria-label="서비스 담당자 조회 개선 전후 애니메이션">
+  <div class="query-animation-heading">
+    <div>
+      <p class="query-animation-eyebrow">QUERY FLOW · 3명 예시</p>
+      <h3>반복 조회 → 3회 일괄 조회와 HashMap 조합</h3>
+    </div>
+    <span class="query-animation-counter" data-frame-counter>01 / 09</span>
+  </div>
+
+  <div class="query-animation-grid">
+    <div class="query-animation-lane query-animation-before is-current" data-side="before">
+      <div class="query-animation-lane-head"><span>BEFORE · for 안에서 SQL 실행</span><strong>사용자마다 반복 조회</strong></div>
+      <div class="service-flow">
+        <div class="service-flow-label">DB → 서비스 유저 목록 <span>SELECT × 1</span></div>
+        <div class="service-list data-viz-block" data-node="before-list">
+          {users.map((user) => <span><b>{user.employee}</b><small>등록자 {user.registrant}</small></span>)}
+        </div>
+        <div class="service-flow-arrow" aria-hidden="true">↓</div>
+        <div class="service-loop-title"><code>for (서비스 유저)</code><span>반복문 내부 DB 접근</span></div>
+        <div class="service-loop-rows">
+          {users.map((user, index) => <div class="service-loop-row">
+            <div class="service-person data-viz-block" data-node={`before-user-${user.employee}`}><small>{index + 1}번째</small><b>유저 {user.employee}</b></div>
+            <div class="service-query-pair">
+              <div class="data-viz-block" data-node={`before-detail-${user.employee}`}><small>SQL</small>상세 {user.employee}</div>
+              <div class:list={['data-viz-block', { 'service-repeat-query': index === 2 }]} data-node={`before-registrant-${user.employee}`}><small>SQL</small>등록자 {user.registrant}{index === 2 && <em>재조회</em>}</div>
+            </div>
+          </div>)}
+        </div>
+        <div class="service-outcome service-outcome-before">예시 3명: 목록 1회 + 반복 조회 6회 <b>총 7회 SQL</b></div>
+      </div>
+    </div>
+
+    <div class="query-animation-lane query-animation-after" data-side="after">
+      <div class="query-animation-lane-head"><span>AFTER · 먼저 일괄 조회</span><strong>총 3회 SQL</strong></div>
+      <div class="service-flow">
+        <div class="service-flow-label">DB → 필요한 데이터를 한 번씩 조회</div>
+        <div class="service-batch-queries">
+          <div class="data-viz-block" data-node="after-list"><b>SQL ①</b><span>서비스 유저 목록</span><small>101 · 102 · 103</small></div>
+          <div class="data-viz-block" data-node="after-details"><b>SQL ②</b><span>유저 상세 전체</span><small>101 · 102 · 103</small></div>
+          <div class="data-viz-block" data-node="after-registrants"><b>SQL ③</b><span>등록자 상세 전체</span><small>901 · 902</small></div>
+        </div>
+        <div class="service-flow-arrow" aria-hidden="true">↓</div>
+        <div class="service-map-pair">
+          <div class="service-map data-viz-block" data-node="after-detail-map"><small>HashMap · key = 유저 사번</small><b>101　102　103</b></div>
+          <div class="service-map data-viz-block" data-node="after-registrant-map"><small>HashMap · key = 등록자 사번</small><b>901　902</b></div>
+        </div>
+        <div class="service-flow-arrow" aria-hidden="true">↓</div>
+        <div class="service-loop-title"><code>for (서비스 유저)</code><span>Map 조회 → 응답 설정</span></div>
+        <div class="service-assembly">
+          {users.map((user) => <div class="data-viz-block" data-node={`after-assemble-${user.employee}`}><b>{user.employee}</b><span>상세[{user.employee}] + 등록자[{user.registrant}]</span>{user.employee === '103' && <em>901 재사용</em>}</div>)}
+        </div>
+        <div class="service-outcome service-outcome-after">반복문 안 추가 SQL <b>0회</b></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="query-animation-narration" data-narration aria-live="polite">① 서비스 유저 목록을 한 번 조회해 사번과 등록자 사번을 가져옵니다.</p>
+  <div class="query-animation-controls">
+    <div class="query-animation-buttons">
+      <button type="button" data-action="previous" aria-label="이전 단계">←</button>
+      <button type="button" data-action="play" aria-label="애니메이션 재생">재생 ▶</button>
+      <button type="button" data-action="next" aria-label="다음 단계">→</button>
+    </div>
+    <div class="query-animation-progress" aria-hidden="true"><span data-progress></span></div>
+  </div>
+  <p class="query-animation-note">사번과 3명은 동작을 설명하기 위한 예시입니다. 운영 환경의 68명 조회에서는 SQL 약 200회 → 3회, 응답 시간 3초 이상 → 1초 미만으로 측정했습니다.</p>
+</section>
+
+<script>
+  const animation = document.querySelector<HTMLElement>('[data-service-user-animation]');
+  if (animation) {
+    document.getElementById('개선-방법-검토')?.before(animation);
+
+    type Frame = { side: 'before' | 'after'; explanation: string; checking: string[]; matched: string[] };
+    const frames = JSON.parse(animation.dataset.frames ?? '[]') as Frame[];
+    const narration = animation.querySelector<HTMLElement>('[data-narration]');
+    const counter = animation.querySelector<HTMLElement>('[data-frame-counter]');
+    const progress = animation.querySelector<HTMLElement>('[data-progress]');
+    const playButton = animation.querySelector<HTMLButtonElement>('[data-action="play"]');
+    let current = 0;
+    let timer: number | undefined;
+
+    const renderFrame = () => {
+      const frame = frames[current];
+      const matched = new Set(frames.slice(0, current + 1).flatMap((item) => item.matched));
+      const checking = new Set(frame.checking);
+      animation.querySelectorAll<HTMLElement>('[data-side]').forEach((lane) => lane.classList.toggle('is-current', lane.dataset.side === frame.side));
+      animation.querySelectorAll<HTMLElement>('[data-node]').forEach((node) => {
+        const id = node.dataset.node ?? '';
+        node.classList.toggle('is-checking', checking.has(id));
+        node.classList.toggle('is-matched', matched.has(id));
+      });
+      if (narration) narration.textContent = frame.explanation;
+      if (counter) counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(frames.length).padStart(2, '0')}`;
+      if (progress) progress.style.width = `${((current + 1) / frames.length) * 100}%`;
+    };
+
+    const pause = () => {
+      window.clearInterval(timer);
+      timer = undefined;
+      if (playButton) {
+        playButton.textContent = current === frames.length - 1 ? '다시 보기 ↺' : '재생 ▶';
+        playButton.setAttribute('aria-label', current === frames.length - 1 ? '애니메이션 다시 보기' : '애니메이션 재생');
+      }
+    };
+
+    const play = () => {
+      if (timer) return;
+      if (current === frames.length - 1) current = 0;
+      renderFrame();
+      if (playButton) {
+        playButton.textContent = '일시정지 Ⅱ';
+        playButton.setAttribute('aria-label', '애니메이션 일시정지');
+      }
+      timer = window.setInterval(() => {
+        if (current === frames.length - 1) { pause(); return; }
+        current += 1;
+        renderFrame();
+      }, 1800);
+    };
+
+    animation.querySelector<HTMLButtonElement>('[data-action="previous"]')?.addEventListener('click', () => {
+      pause(); current = Math.max(0, current - 1); renderFrame(); pause();
+    });
+    animation.querySelector<HTMLButtonElement>('[data-action="next"]')?.addEventListener('click', () => {
+      pause(); current = Math.min(frames.length - 1, current + 1); renderFrame(); pause();
+    });
+    playButton?.addEventListener('click', () => timer ? pause() : play());
+    renderFrame();
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && current === 0) play();
+        if (!entries[0].isIntersecting && timer) pause();
+      }, { threshold: 0.35 });
+      observer.observe(animation);
+    }
+  }
+</script>

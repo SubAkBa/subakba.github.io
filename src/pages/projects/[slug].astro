@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import QueryCaseAnimation from '../../components/QueryCaseAnimation.astro';
+import ServiceUserAnimation from '../../components/ServiceUserAnimation.astro';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -27,6 +28,7 @@ export async function getStaticPaths() {
 const { project, previous, next } = Astro.props;
 const { Content, headings } = await render(project);
 const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
+const isServiceUserStudy = project.id === 'service-user-query-optimization';
 const isCacheCaseStudy = project.id === 'caffeine-to-redis';
 const isStageStudy = isCacheCaseStudy || project.id === 'open-api-load-testing';
 const tableOfContents = headings.filter(({ depth, slug }) =>
@@ -53,7 +55,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content /></article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}</article>
       {isQueryCaseStudy && (
         <div class="query-animation-source" aria-hidden="true">
           <QueryCaseAnimation caseNumber={1} />
