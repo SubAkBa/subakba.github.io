@@ -365,7 +365,7 @@ button { cursor: pointer; }
 .service-flow { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; }
 .service-flow-label { display: flex; justify-content: space-between; gap: 6px; color: var(--subtle); font-size: 10px; font-weight: 800; line-height: 1.4; }
 .service-flow-label span { color: var(--query-before); white-space: nowrap; }
-.service-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 5px; }
+.service-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 5px; }
 .service-list > span { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 5px 2px; border: 1px solid var(--line); background: var(--surface); }
 .service-list b { font-size: 11px; }
 .service-list small { font-size: 9px; }
@@ -374,10 +374,10 @@ button { cursor: pointer; }
 .service-loop-title code { color: var(--text); font-size: 10px; }
 .service-loop-rows { display: grid; gap: 5px; }
 .service-loop-row { display: grid; grid-template-columns: 77px minmax(0, 1fr); gap: 5px; }
-.service-person { display: flex; flex-direction: column; gap: 1px; min-height: 48px; }
+.service-person { display: flex; flex-direction: column; gap: 1px; min-height: 42px; }
 .service-person b { font-size: 10px; }
 .service-query-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-.service-query-pair .data-viz-block { min-height: 48px; flex-wrap: wrap; gap: 3px; padding: 4px 2px; font-size: 9px; }
+.service-query-pair .data-viz-block { min-height: 42px; flex-wrap: wrap; gap: 3px; padding: 4px 2px; font-size: 9px; }
 .service-query-pair .data-viz-block small { padding: 1px 3px; border-radius: 2px; background: color-mix(in srgb, var(--query-before) 14%, var(--surface)); color: var(--query-before); font-size: 8px; font-weight: 800; }
 .service-repeat-query { border-style: dashed; }
 .service-repeat-query em, .service-assembly em { width: 100%; color: var(--query-before); font-size: 8px; font-style: normal; font-weight: 850; line-height: 1; }
@@ -393,9 +393,9 @@ button { cursor: pointer; }
 .service-map-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .service-map { min-height: 57px; flex-direction: column; gap: 4px; }
 .service-map small { font-size: 9px; }
-.service-map b { color: var(--accent-strong); font-size: 12px; letter-spacing: .04em; }
+.service-map b { color: var(--accent-strong); font-size: 11px; letter-spacing: .02em; overflow-wrap: anywhere; }
 .service-assembly { display: grid; gap: 5px; }
-.service-assembly .data-viz-block { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; min-height: 31px; gap: 4px; justify-content: start; padding: 5px; text-align: left; }
+.service-assembly .data-viz-block { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; min-height: 28px; gap: 4px; justify-content: start; padding: 4px 5px; text-align: left; }
 .service-assembly b { color: var(--accent-strong); font-size: 10px; }
 .service-assembly span { font-size: 9px; }
 .service-assembly em { width: auto; white-space: nowrap; }

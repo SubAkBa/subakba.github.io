@@ -3,33 +3,53 @@ const users = [
   { employee: '101', registrant: '901' },
   { employee: '102', registrant: '902' },
   { employee: '103', registrant: '901' },
+  { employee: '104', registrant: '903' },
+  { employee: '105', registrant: '901' },
+  { employee: '106', registrant: '902' },
+  { employee: '107', registrant: '903' },
+  { employee: '108', registrant: '901' },
 ];
+const registrantNumbers = [...new Set(users.map((user) => user.registrant))];
+const repeatedQueryCount = 1 + users.length * 2;
 
 const frames = [
   { side: 'before', explanation: '① 서비스 유저 목록을 한 번 조회해 사번과 등록자 사번을 가져옵니다.', checking: ['before-list'], matched: ['before-list'] },
-  { side: 'before', explanation: '② for 문의 첫 번째 유저: 상세정보와 등록자 정보를 각각 SQL로 조회합니다.', checking: ['before-user-101', 'before-detail-101', 'before-registrant-101'], matched: ['before-user-101', 'before-detail-101', 'before-registrant-101'] },
-  { side: 'before', explanation: '③ 두 번째 유저도 같은 두 SQL을 실행합니다. 유저 수만큼 DB 왕복이 늘어납니다.', checking: ['before-user-102', 'before-detail-102', 'before-registrant-102'], matched: ['before-user-102', 'before-detail-102', 'before-registrant-102'] },
-  { side: 'before', explanation: '④ 세 번째 유저의 등록자 901은 이미 조회했지만, 반복문 안에서 다시 SQL을 실행합니다.', checking: ['before-user-103', 'before-detail-103', 'before-registrant-103'], matched: ['before-user-103', 'before-detail-103', 'before-registrant-103'] },
-  { side: 'after', explanation: '① 서비스 유저 3명을 한 번에 조회합니다. 이후 조회도 유저별 반복문 밖에서 실행합니다.', checking: ['after-list'], matched: ['after-list'] },
-  { side: 'after', explanation: '② 상세정보를 한 번에 조회해 사번 101·102·103을 키로 저장합니다.', checking: ['after-details', 'after-detail-map'], matched: ['after-details', 'after-detail-map'] },
-  { side: 'after', explanation: '③ 등록자 정보를 한 번에 조회해 사번 901·902를 키로 저장합니다. SQL은 여기서 끝납니다.', checking: ['after-registrants', 'after-registrant-map'], matched: ['after-registrants', 'after-registrant-map'] },
-  { side: 'after', explanation: '④ for 문에서 각 서비스 유저의 사번으로 상세 Map을, 등록자 사번으로 등록자 Map을 찾습니다.', checking: ['after-assemble-101', 'after-assemble-102'], matched: ['after-assemble-101', 'after-assemble-102'] },
-  { side: 'after', explanation: '⑤ 세 번째 유저도 등록자 901을 Map에서 재사용합니다. 반복문 안의 추가 SQL은 0회입니다.', checking: ['after-assemble-103', 'after-registrant-map'], matched: ['after-assemble-103'] },
+  ...users.map((user, index) => {
+    const isRepeat = users.findIndex((item) => item.registrant === user.registrant) < index;
+    const nodes = [`before-user-${user.employee}`, `before-detail-${user.employee}`, `before-registrant-${user.employee}`];
+    return {
+      side: 'before',
+      explanation: `for 문 ${index + 1}/${users.length}: 유저 ${user.employee}의 상세·등록자 정보를 SQL 2회로 조회합니다.${isRepeat ? ` 등록자 ${user.registrant}도 다시 조회합니다.` : ''} 누적 ${1 + (index + 1) * 2}회.`,
+      checking: nodes,
+      matched: nodes,
+    };
+  }),
+  { side: 'after', explanation: `① 서비스 유저 ${users.length}명을 한 번에 조회합니다.`, checking: ['after-list'], matched: ['after-list'] },
+  { side: 'after', explanation: `② 유저 상세정보 ${users.length}건을 한 번에 조회하고, 각 사번을 키로 HashMap에 저장합니다.`, checking: ['after-details', 'after-detail-map'], matched: ['after-details', 'after-detail-map'] },
+  { side: 'after', explanation: `③ 등록자 ${registrantNumbers.length}명의 상세정보를 한 번에 조회해 사번별로 저장합니다. SQL은 총 3회입니다.`, checking: ['after-registrants', 'after-registrant-map'], matched: ['after-registrants', 'after-registrant-map'] },
+  ...[users.slice(0, 4), users.slice(4)].map((group, index) => ({
+    side: 'after',
+    explanation: index === 0
+      ? '④ for 문에서 유저 사번과 등록자 사번으로 두 HashMap을 조회해 응답을 설정합니다. 추가 SQL은 없습니다.'
+      : '⑤ 남은 유저도 같은 Map을 사용합니다. 등록자 901·902·903은 여러 유저가 재사용하며 추가 SQL은 0회입니다.',
+    checking: [`after-registrant-map`, ...group.map((user) => `after-assemble-${user.employee}`)],
+    matched: group.map((user) => `after-assemble-${user.employee}`),
+  })),
 ];
 ---
 
 <section class="query-animation service-animation" data-service-user-animation data-frames={JSON.stringify(frames)} aria-label="서비스 담당자 조회 개선 전후 애니메이션">
   <div class="query-animation-heading">
     <div>
-      <p class="query-animation-eyebrow">QUERY FLOW · 3명 예시</p>
+      <p class="query-animation-eyebrow">QUERY FLOW · {users.length}명 예시</p>
       <h3>반복 조회 → 3회 일괄 조회와 HashMap 조합</h3>
     </div>
-    <span class="query-animation-counter" data-frame-counter>01 / 09</span>
+    <span class="query-animation-counter" data-frame-counter>01 / {String(frames.length).padStart(2, '0')}</span>
   </div>
 
   <div class="query-animation-grid">
     <div class="query-animation-lane query-animation-before is-current" data-side="before">
-      <div class="query-animation-lane-head"><span>BEFORE · for 안에서 SQL 실행</span><strong>사용자마다 반복 조회</strong></div>
+      <div class="query-animation-lane-head"><span>BEFORE · for 안에서 SQL 실행</span><strong>예시 {repeatedQueryCount}회 SQL</strong></div>
       <div class="service-flow">
         <div class="service-flow-label">DB → 서비스 유저 목록 <span>SELECT × 1</span></div>
         <div class="service-list data-viz-block" data-node="before-list">
@@ -42,11 +62,11 @@ const frames = [
             <div class="service-person data-viz-block" data-node={`before-user-${user.employee}`}><small>{index + 1}번째</small><b>유저 {user.employee}</b></div>
             <div class="service-query-pair">
               <div class="data-viz-block" data-node={`before-detail-${user.employee}`}><small>SQL</small>상세 {user.employee}</div>
-              <div class:list={['data-viz-block', { 'service-repeat-query': index === 2 }]} data-node={`before-registrant-${user.employee}`}><small>SQL</small>등록자 {user.registrant}{index === 2 && <em>재조회</em>}</div>
+              <div class:list={['data-viz-block', { 'service-repeat-query': users.findIndex((item) => item.registrant === user.registrant) < index }]} data-node={`before-registrant-${user.employee}`}><small>SQL</small>등록자 {user.registrant}{users.findIndex((item) => item.registrant === user.registrant) < index && <em>재조회</em>}</div>
             </div>
           </div>)}
         </div>
-        <div class="service-outcome service-outcome-before">예시 3명: 목록 1회 + 반복 조회 6회 <b>총 7회 SQL</b></div>
+        <div class="service-outcome service-outcome-before">예시 {users.length}명: 목록 1회 + 반복 조회 {users.length * 2}회 <b>총 {repeatedQueryCount}회 SQL</b></div>
       </div>
     </div>
 
@@ -55,19 +75,19 @@ const frames = [
       <div class="service-flow">
         <div class="service-flow-label">DB → 필요한 데이터를 한 번씩 조회</div>
         <div class="service-batch-queries">
-          <div class="data-viz-block" data-node="after-list"><b>SQL ①</b><span>서비스 유저 목록</span><small>101 · 102 · 103</small></div>
-          <div class="data-viz-block" data-node="after-details"><b>SQL ②</b><span>유저 상세 전체</span><small>101 · 102 · 103</small></div>
-          <div class="data-viz-block" data-node="after-registrants"><b>SQL ③</b><span>등록자 상세 전체</span><small>901 · 902</small></div>
+          <div class="data-viz-block" data-node="after-list"><b>SQL ①</b><span>서비스 유저 목록</span><small>101–108 · 8명</small></div>
+          <div class="data-viz-block" data-node="after-details"><b>SQL ②</b><span>유저 상세 전체</span><small>101–108 · 8건</small></div>
+          <div class="data-viz-block" data-node="after-registrants"><b>SQL ③</b><span>등록자 상세 전체</span><small>{registrantNumbers.join(' · ')}</small></div>
         </div>
         <div class="service-flow-arrow" aria-hidden="true">↓</div>
         <div class="service-map-pair">
-          <div class="service-map data-viz-block" data-node="after-detail-map"><small>HashMap · key = 유저 사번</small><b>101　102　103</b></div>
-          <div class="service-map data-viz-block" data-node="after-registrant-map"><small>HashMap · key = 등록자 사번</small><b>901　902</b></div>
+          <div class="service-map data-viz-block" data-node="after-detail-map"><small>HashMap · key = 유저 사번</small><b>{users.map((user) => user.employee).join(' · ')}</b></div>
+          <div class="service-map data-viz-block" data-node="after-registrant-map"><small>HashMap · key = 등록자 사번</small><b>{registrantNumbers.join(' · ')}</b></div>
         </div>
         <div class="service-flow-arrow" aria-hidden="true">↓</div>
         <div class="service-loop-title"><code>for (서비스 유저)</code><span>Map 조회 → 응답 설정</span></div>
         <div class="service-assembly">
-          {users.map((user) => <div class="data-viz-block" data-node={`after-assemble-${user.employee}`}><b>{user.employee}</b><span>상세[{user.employee}] + 등록자[{user.registrant}]</span>{user.employee === '103' && <em>901 재사용</em>}</div>)}
+          {users.map((user, index) => <div class="data-viz-block" data-node={`after-assemble-${user.employee}`}><b>{user.employee}</b><span>상세[{user.employee}] + 등록자[{user.registrant}]</span>{users.findIndex((item) => item.registrant === user.registrant) < index && <em>재사용</em>}</div>)}
         </div>
         <div class="service-outcome service-outcome-after">반복문 안 추가 SQL <b>0회</b></div>
       </div>
@@ -83,13 +103,13 @@ const frames = [
     </div>
     <div class="query-animation-progress" aria-hidden="true"><span data-progress></span></div>
   </div>
-  <p class="query-animation-note">사번과 3명은 동작을 설명하기 위한 예시입니다. 운영 환경의 68명 조회에서는 SQL 약 200회 → 3회, 응답 시간 3초 이상 → 1초 미만으로 측정했습니다.</p>
+  <p class="query-animation-note">사번과 {users.length}명은 동작을 설명하기 위한 예시입니다. 운영 환경의 68명 조회에서는 SQL 약 200회 → 3회, 응답 시간 3초 이상 → 1초 미만으로 측정했습니다.</p>
 </section>
 
 <script>
   const animation = document.querySelector<HTMLElement>('[data-service-user-animation]');
   if (animation) {
-    document.getElementById('개선-방법-검토')?.before(animation);
+    document.getElementById('join-1회-조회-대신-일괄-조회를-선택한-이유')?.before(animation);
 
     type Frame = { side: 'before' | 'after'; explanation: string; checking: string[]; matched: string[] };
     const frames = JSON.parse(animation.dataset.frames ?? '[]') as Frame[];
@@ -136,7 +156,7 @@ const frames = [
         if (current === frames.length - 1) { pause(); return; }
         current += 1;
         renderFrame();
-      }, 1800);
+      }, 1400);
     };
 
     animation.querySelector<HTMLButtonElement>('[data-action="previous"]')?.addEventListener('click', () => {
