@@ -39,12 +39,13 @@ Open API의 처리 가능한 요청량을 확인하고 Rate Limit 정책 수립�
 
 ### 부하 테스트 도구 선정
 
-정해진 시나리오를 반복 실행하는 대신 웹에서 입력한 URL·HTTP Method·Header·Body·사용자 수·Injection 방식을 실행 시점에 적용해야 했음. JMeter, k6, Gatling을 기존 Java/Spring Boot 환경과 동적 테스트 구성 요건을 기준으로 비교.
+정해진 시나리오를 반복 실행하는 대신 웹에서 입력한 URL·HTTP Method·Header·Body·사용자 수·Injection 방식을 실행 시점에 적용해야 했음. JMeter, k6, The Grinder, Gatling을 기존 Java/Spring Boot 환경과 동적 테스트 구성 요건을 기준으로 비교.
 
 | 도구 | 특징 | 검토 결과 |
 | --- | --- | --- |
 | JMeter | GUI 기반 시나리오 구성 | 테스트 작성은 편리하지만 웹 입력값으로 시나리오를 코드에서 동적으로 구성하는 구조에는 적합도가 낮다고 판단 |
 | k6 | JavaScript 기반 Test as Code | 테스트 코드가 간결하지만 기존 Java 프로젝트와 별도의 언어·실행 환경 관리 필요 |
+| The Grinder | Java 기반 분산 부하 테스트 프레임워크 | 공식 배포·프로젝트 업데이트가 장기간 정체돼 버그 발생 시 해결·유지보수에 어려움이 있을 것으로 판단 |
 | Gatling | Java DSL 기반 Test as Code | 기존 Java 빌드 환경을 활용하면서 요청과 Injection Profile을 코드로 구성하고 외부 파라미터를 적용하기 용이 |
 
 Gatling Java DSL에서는 Backend API가 전달한 값을 System Property로 읽어 테스트 조건에 적용할 수 있음. 다음은 전달 방식의 일반화된 예시.
