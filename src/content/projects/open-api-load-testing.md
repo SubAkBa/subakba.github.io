@@ -92,16 +92,35 @@ Backend API의 요청 처리와 별도 Gatling 프로세스의 실행 생명주�
 
 ### 실행 중인 프로세스를 찾기 어려운 구조
 
-초기에는 Gatling 프로세스가 종료될 때까지 기다려야 했음. Backend API 서버 4대로 요청이 분산되어 종료 요청이 실제 실행 서버에 도착한다는 보장도 없었음.
-
-테스트 시작 시 Redis에 실행 서버 IP와 Gatling PID·Process Start Time을 저장. 종료 요청을 받은 서버는 Redis에서 실행 서버를 찾아 `WebClient`로 해당 서버의 내부 Kill API를 직접 호출. 서버 간 Kill API에는 관리자 인증 검증 적용.
+초기에는 Gatling 프로세스가 종료될 때까지 기다려야 했음. 부하 테스트는 Backend API 서버 4대 중 한 대에서 실행되지만, 강제 종료 요청이 같은 서버에 도착한다는 보장은 없었음.
 
 ```text
-종료 요청 → Backend 서버 → Redis에서 실행 서버·프로세스 정보 조회
-                              ↓
-                       WebClient로 실행 서버의 Kill API 호출
-                              ↓
-                       Gatling 프로세스 검증·종료
+사내 Load Balancer
+  ├─ Nginx #1 → Backend API #1
+  ├─ Nginx #2 → Backend API #2
+  ├─ Nginx #3 → Backend API #3
+  └─ Nginx #4 → Backend API #4
+```
+
+### 강제 종료 방식 검토
+
+| 후보 | 검토 결과 |
+| --- | --- |
+| 특정 API 서버로 요청 라우팅 | 실행 서버를 요청 클라이언트가 알 수 없고, 사내 Load Balancer는 특정 Backend 서버 지정 기능을 제공하지 않음. Nginx도 각 서버 앞에 개별 구성되어 공통 라우팅 계층으로 활용할 수 없었음 |
+| 실행 서버의 API 직접 호출 | Redis에서 실제 실행 서버를 찾은 뒤 해당 서버의 Process Kill API를 호출하면, 종료 요청을 어느 서버가 받더라도 실행 서버에서 프로세스를 종료할 수 있음 |
+
+따라서 강제 종료 요청을 받는 API와 실제 프로세스를 종료하는 내부 API를 분리하고, 서버 간 직접 호출 방식 채택.
+
+### 실행 서버로 종료 요청 전달
+
+테스트 시작 시 Redis에 실행 서버 IP와 Gatling PID·Process Start Time을 저장. 종료 요청을 받은 서버는 Redis에서 실행 서버 IP를 조회하고, `WebClient`로 Load Balancer를 거치지 않고 해당 서버의 내부 Process Kill API를 직접 호출. 서버 간 Kill API에는 관리자 인증 검증 적용.
+
+```text
+종료 요청 → 강제 종료 진행 API (요청을 받은 Backend 서버)
+                ↓ Redis에서 실행 서버 조회
+             WebClient로 실행 서버의 Process Kill API 호출
+                ↓
+          실행 서버에서 ProcessHandle로 Gatling 종료
 ```
 
 ### PID 재사용을 고려한 종료
