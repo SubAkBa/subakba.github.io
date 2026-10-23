@@ -5,6 +5,7 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import QueryCaseAnimation from '../../components/QueryCaseAnimation.astro';
 import ServiceUserAnimation from '../../components/ServiceUserAnimation.astro';
+import MailGroupAnimation from '../../components/MailGroupAnimation.astro';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -30,7 +31,8 @@ const { Content, headings } = await render(project);
 const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
 const isServiceUserStudy = project.id === 'service-user-query-optimization';
 const isCacheCaseStudy = project.id === 'caffeine-to-redis';
-const isStageStudy = isCacheCaseStudy || project.id === 'open-api-load-testing';
+const isMailGroupStudy = project.id === 'mail-group-batch-optimization';
+const isStageStudy = isCacheCaseStudy || isMailGroupStudy || project.id === 'open-api-load-testing';
 const tableOfContents = headings.filter(({ depth, slug }) =>
   depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isStageStudy,
 );
@@ -55,7 +57,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}</article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}</article>
       {isQueryCaseStudy && (
         <div class="query-animation-source" aria-hidden="true">
           <QueryCaseAnimation caseNumber={1} />
@@ -315,8 +317,124 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
 
     const stageArticle = document.querySelector<HTMLElement>('.project-prose-stage-study');
     if (stageArticle) {
-      const stageLabel = stageArticle.classList.contains('project-prose-cache-study') ? '캐시 개선 단계' : '부하 테스트 개선 단계';
+      const stageLabel = stageArticle.querySelector('[data-mail-group-animation]')
+        ? '메일 그룹 동기화 개선 단계'
+        : stageArticle.classList.contains('project-prose-cache-study') ? '캐시 개선 단계' : '부하 테스트 개선 단계';
       setupTabs(stageArticle, ':scope > h2[id^="stage-"]', stageLabel, /^(Stage\s+\d+)\.\s*(.*)$/, true);
+    }
+
+    const mailGroupAnimation = document.querySelector<HTMLElement>('[data-mail-group-animation]');
+    if (mailGroupAnimation) {
+      document.getElementById('mail-group-animation-slot')?.replaceWith(mailGroupAnimation);
+
+      type Frame = {
+        side: 'before' | 'after';
+        checking: string[];
+        matched: string[];
+        employees: string[];
+        caption: string;
+        current: string;
+        phase: string;
+        stack: string[];
+        stackAction: string;
+        operation: 'call' | 'return' | 'sync' | 'cte';
+      };
+      const frames = JSON.parse(mailGroupAnimation.dataset.frames ?? '[]') as Frame[];
+      const narration = mailGroupAnimation.querySelector<HTMLElement>('[data-narration]');
+      const counter = mailGroupAnimation.querySelector<HTMLElement>('[data-frame-counter]');
+      const phase = mailGroupAnimation.querySelector<HTMLElement>('[data-phase]');
+      const progress = mailGroupAnimation.querySelector<HTMLElement>('[data-progress]');
+      const playButton = mailGroupAnimation.querySelector<HTMLButtonElement>('[data-action="play"]');
+      let current = 0;
+      let timer: number | undefined;
+
+      const renderFrame = () => {
+        const frame = frames[current];
+        const checking = new Set(frame.checking);
+        const matched = new Set(frame.matched);
+        const found = new Set(frame.employees);
+        const beforeComplete = frame.side === 'after';
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-side]').forEach((lane) =>
+          lane.classList.toggle('is-current', lane.dataset.side === frame.side));
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-node]').forEach((node) => {
+          node.classList.toggle('is-checking', checking.has(node.dataset.node ?? ''));
+          node.classList.toggle('is-matched', matched.has(node.dataset.node ?? ''));
+        });
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-employee]').forEach((node) => {
+          node.classList.toggle('is-found',
+            (node.dataset.employee === `${frame.side}-${node.textContent}` && found.has(node.textContent ?? '')) ||
+            (beforeComplete && node.dataset.employee === `before-${node.textContent}`));
+        });
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-result]').forEach((node) => {
+          node.textContent = node.dataset.result === frame.side ? `${found.size} / 8명` : beforeComplete ? '8 / 8명' : '0 / 8명';
+        });
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-status]').forEach((node) => {
+          node.textContent = node.dataset.status === frame.side ? frame.current : beforeComplete ? '예시 DL-A 가공 완료 · 전체 List 탐색 6회' : '원본 관계 동기화';
+        });
+        const stack = mailGroupAnimation.querySelector<HTMLElement>('[data-call-stack]');
+        stack?.classList.toggle('is-returning', frame.operation === 'return');
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-stack-slot]').forEach((slot) => {
+          const depth = Number(slot.dataset.stackSlot);
+          const group = frame.side === 'before' ? frame.stack[depth] : undefined;
+          const popped = frame.operation === 'return' && !group ? frames[current - 1]?.stack[depth] : undefined;
+          slot.classList.toggle('is-active', Boolean(group));
+          slot.classList.toggle('is-current', Boolean(group) && depth === frame.stack.length - 1);
+          slot.classList.toggle('is-popped', Boolean(popped));
+          const code = slot.querySelector<HTMLElement>('[data-stack-code]');
+          if (code) code.textContent = group ? `insertMemberRecursively(${group})` : popped ? `return ${popped}` : '—';
+        });
+        const stackDepth = mailGroupAnimation.querySelector<HTMLElement>('[data-stack-depth]');
+        if (stackDepth) stackDepth.textContent = frame.side === 'before' && frame.stack.length ? `depth ${frame.stack.length - 1}` : '호출 종료';
+        const stackAction = mailGroupAnimation.querySelector<HTMLElement>('[data-stack-action]');
+        if (stackAction) stackAction.textContent = frame.side === 'before' ? frame.stackAction : 'RETURN ↶ 모든 호출 종료 · 예시 전체 List 탐색 6회';
+        mailGroupAnimation.querySelectorAll<HTMLElement>('[data-responsibility]').forEach((node) => {
+          node.classList.toggle('is-active', node.dataset.responsibility === frame.operation);
+        });
+        if (narration) narration.textContent = frame.caption;
+        if (counter) counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(frames.length).padStart(2, '0')}`;
+        if (phase) phase.textContent = frame.phase;
+        if (progress) progress.style.width = `${((current + 1) / frames.length) * 100}%`;
+      };
+
+      const pause = () => {
+        window.clearInterval(timer);
+        timer = undefined;
+        if (playButton) {
+          playButton.textContent = current === frames.length - 1 ? '다시 보기 ↺' : '재생 ▶';
+          playButton.setAttribute('aria-label', current === frames.length - 1 ? '애니메이션 다시 보기' : '애니메이션 재생');
+        }
+      };
+      const play = () => {
+        if (timer) return;
+        if (current === frames.length - 1) current = 0;
+        renderFrame();
+        if (playButton) {
+          playButton.textContent = '일시정지 Ⅱ';
+          playButton.setAttribute('aria-label', '애니메이션 일시정지');
+        }
+        timer = window.setInterval(() => {
+          if (current === frames.length - 1) return pause();
+          current += 1;
+          renderFrame();
+        }, 1650);
+      };
+      mailGroupAnimation.querySelector<HTMLButtonElement>('[data-action="previous"]')?.addEventListener('click', () => {
+        pause(); current = Math.max(0, current - 1); renderFrame(); pause();
+      });
+      mailGroupAnimation.querySelector<HTMLButtonElement>('[data-action="next"]')?.addEventListener('click', () => {
+        pause(); current = Math.min(frames.length - 1, current + 1); renderFrame(); pause();
+      });
+      playButton?.addEventListener('click', () => timer ? pause() : play());
+      renderFrame();
+
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const observer = new IntersectionObserver((entries) => {
+          const visible = entries[0].isIntersecting && !mailGroupAnimation.closest<HTMLElement>('[role="tabpanel"]')?.hidden;
+          if (visible && current === 0) play();
+          if (!visible && timer) pause();
+        }, { threshold: 0.3 });
+        observer.observe(mailGroupAnimation);
+      }
     }
 
     document.querySelectorAll<HTMLPreElement>('.project-prose pre.astro-code').forEach((pre) => {

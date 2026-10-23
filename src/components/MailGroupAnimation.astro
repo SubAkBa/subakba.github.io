@@ -1,0 +1,147 @@
+---
+const relations = [
+  { dl: 'DL-A', member: 'EMP-001' },
+  { dl: 'DL-A', member: 'DL-B' },
+  { dl: 'DL-A', member: 'DL-C' },
+  { dl: 'DL-B', member: 'EMP-002' },
+  { dl: 'DL-B', member: 'DL-D' },
+  { dl: 'DL-C', member: 'EMP-003' },
+  { dl: 'DL-C', member: 'DL-E' },
+  { dl: 'DL-D', member: 'EMP-004' },
+  { dl: 'DL-D', member: 'EMP-005' },
+  { dl: 'DL-E', member: 'EMP-006' },
+  { dl: 'DL-E', member: 'DL-F' },
+  { dl: 'DL-F', member: 'EMP-007' },
+  { dl: 'DL-F', member: 'EMP-008' },
+];
+
+const employees = ['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006', 'EMP-007', 'EMP-008'];
+const beforeSteps = [
+  { stack: ['DL-A'], group: 'DL-A', action: 'CALL ↓ 시작 DL-A' },
+  { stack: ['DL-A', 'DL-B'], group: 'DL-B', action: 'CALL ↓ DL-A에서 DL-B로 진입' },
+  { stack: ['DL-A', 'DL-B', 'DL-D'], group: 'DL-D', action: 'CALL ↓ DL-B에서 DL-D로 진입' },
+  { stack: ['DL-A'], group: null, action: 'RETURN ↶ DL-D → DL-B → DL-A' },
+  { stack: ['DL-A', 'DL-C'], group: 'DL-C', action: 'CALL ↓ DL-A의 다음 자식 DL-C' },
+  { stack: ['DL-A', 'DL-C', 'DL-E'], group: 'DL-E', action: 'CALL ↓ DL-C에서 DL-E로 진입' },
+  { stack: ['DL-A', 'DL-C', 'DL-E', 'DL-F'], group: 'DL-F', action: 'CALL ↓ DL-E에서 DL-F로 진입' },
+  { stack: [], group: null, action: 'RETURN ↶ DL-F → DL-E → DL-C → DL-A' },
+];
+const beforeFrames = beforeSteps.map((step, index) => {
+  const scannedGroups = beforeSteps.slice(0, index + 1).flatMap((item) => item.group ? [item.group] : []);
+  const scanCount = scannedGroups.length;
+  return {
+    side: 'before',
+    checking: step.group ? relations.map((_, row) => `before-${row}`) : [],
+    matched: step.group ? relations.flatMap((relation, row) => relation.dl === step.group ? [`before-${row}`] : []) : [],
+    employees: relations.filter((relation) => scannedGroups.includes(relation.dl) && relation.member.startsWith('EMP-')).map((relation) => relation.member),
+    caption: step.group
+      ? `${step.action}. 호출 깊이 ${step.stack.length - 1}. ${step.group}의 자식을 찾으려고 전체 관계 ${relations.length}건을 다시 순회합니다.`
+      : `${step.action}. 하위 DL 처리를 마치고 이전 재귀 호출로 돌아갑니다. 이 단계에서는 전체 List를 다시 훑지 않습니다.`,
+    current: step.group ? `${step.group} · depth ${step.stack.length - 1}` : '이전 호출로 복귀',
+    phase: `전체 List 재탐색 ${scanCount}회`,
+    stack: step.stack,
+    stackAction: step.action,
+    operation: step.group ? 'call' : 'return',
+  };
+});
+const afterLevels = [
+  { groups: ['DL-A'], label: '시작 DL-A', note: 'Anchor: DL-A의 직속 멤버를 읽습니다.' },
+  { groups: ['DL-B', 'DL-C'], label: '깊이 1 · DL-B, DL-C', note: 'Recursive: 직속 멤버 중 하위 DL-B와 DL-C의 멤버를 읽습니다.' },
+  { groups: ['DL-D', 'DL-E'], label: '깊이 2 · DL-D, DL-E', note: 'Recursive: 새로 발견한 하위 DL-D와 DL-E의 멤버를 읽습니다.' },
+  { groups: ['DL-F'], label: '깊이 3 · DL-F', note: 'Recursive: DL-E 아래 DL-F의 멤버를 읽습니다.' },
+];
+const afterFrames = [
+  {
+    side: 'after', checking: [], matched: [], employees: [], current: '원본 관계 동기화',
+    phase: `${relations.length}개 관계 저장`,
+    caption: `Batch: ${relations.length}개 DL_CD / MEMBER_CD 관계를 펼치지 않고 그대로 동기화합니다.`,
+    stack: [], stackAction: 'Batch: Java 재귀 호출 없음', operation: 'sync',
+  },
+  ...afterLevels.map((level, index) => ({
+    side: 'after',
+    checking: relations.flatMap((relation, row) => level.groups.includes(relation.dl) ? [`after-${row}`] : []),
+    matched: relations.flatMap((relation, row) => afterLevels.slice(0, index + 1).some((seen) => seen.groups.includes(relation.dl)) ? [`after-${row}`] : []),
+    employees: relations.filter((relation) => afterLevels.slice(0, index + 1).some((seen) => seen.groups.includes(relation.dl)) && relation.member.startsWith('EMP-')).map((relation) => relation.member),
+    current: level.label,
+    phase: `API 조회 · ${level.label}`,
+    caption: `${level.note} Batch가 저장한 관계에서 조회 시점에 탐색합니다.`,
+    stack: [], stackAction: 'Backend API: Recursive CTE 탐색', operation: 'cte',
+  })),
+  {
+    side: 'after', checking: [], matched: relations.map((_, row) => `after-${row}`), employees,
+    current: '최종 사원 조회', phase: `${employees.length}명 확인`,
+    caption: `CTE가 반환한 코드로 최종 사원 ${employees.length}명의 정보를 조회합니다. 그림의 사번과 관계는 설명용 예시입니다.`,
+    stack: [], stackAction: 'Backend API: Employee 조회', operation: 'cte',
+  },
+];
+const frames = [...beforeFrames, ...afterFrames];
+---
+
+<section class="query-animation mail-group-animation" data-mail-group-animation data-frames={JSON.stringify(frames)} aria-label="메일 그룹 재귀 데이터 가공 전후 애니메이션">
+  <div class="query-animation-heading">
+    <div>
+      <p class="query-animation-eyebrow">RECURSIVE DATA FLOW · 13개 관계 예시</p>
+      <h3>재귀 호출·복귀와 전체 목록 재탐색 → 조회 시점의 계층 탐색</h3>
+    </div>
+    <span class="query-animation-counter" data-frame-counter>01 / {String(frames.length).padStart(2, '0')}</span>
+  </div>
+
+  <div class="query-animation-grid">
+    {(['before', 'after'] as const).map((side) => (
+      <div class:list={['query-animation-lane', `query-animation-${side}`, { 'is-current': side === 'before' }]} data-side={side}>
+        <div class="query-animation-lane-head">
+          <span>{side === 'before' ? 'BEFORE · Batch에서 Java 재귀' : 'AFTER · Batch 저장 / API 조회'}</span>
+          <strong>{side === 'before' ? '전체 List 반복 탐색' : '원본 관계 + Recursive CTE'}</strong>
+        </div>
+        <div class="mail-group-flow">
+          <div class="mail-group-flow-status" data-status={side}>{side === 'before' ? 'DL-A에서 시작' : '원본 관계 동기화'}</div>
+          {side === 'before' ? (
+            <div class="mail-group-stack" data-call-stack>
+              <div class="mail-group-stack-head"><span>JAVA CALL STACK</span><strong data-stack-depth>depth 0</strong></div>
+              <div class="mail-group-stack-frames">
+                {Array.from({ length: 4 }, (_, depth) => (
+                  <div class="mail-group-stack-slot" data-stack-slot={depth} style={`--call-depth: ${depth}`}>
+                    <span aria-hidden="true">↳</span><code data-stack-code>—</code>
+                  </div>
+                ))}
+              </div>
+              <p class="mail-group-stack-action" data-stack-action>CALL ↓ 시작 DL-A</p>
+            </div>
+          ) : (
+            <div class="mail-group-stack mail-group-responsibility">
+              <div class="mail-group-stack-head"><span>RESPONSIBILITY</span><strong>시점 분리</strong></div>
+              <div class="mail-group-responsibility-step" data-responsibility="sync"><b>Batch</b><span>관계 13건 그대로 저장</span></div>
+              <div class="mail-group-responsibility-arrow" aria-hidden="true">↓ 필요한 요청에서</div>
+              <div class="mail-group-responsibility-step" data-responsibility="cte"><b>Backend API</b><span>Recursive CTE → 사원 조회</span></div>
+            </div>
+          )}
+          <div class="mail-group-relation-head"><span>DL_CD</span><span>MEMBER_CD</span></div>
+          <div class="mail-group-relations">
+            {relations.map((relation, row) => (
+              <div class="mail-group-relation data-viz-block" data-node={`${side}-${row}`}>
+                <span>{relation.dl}</span><span class:list={{ 'mail-group-subgroup': relation.member.startsWith('DL-') }}>{relation.member}</span>
+              </div>
+            ))}
+          </div>
+          <div class="mail-group-flow-result"><span>{side === 'before' ? '재귀 결과 · 최종 멤버별 DB 확인' : 'CTE 결과 · Employee 조회'}</span><strong data-result={side}>0 / {employees.length}명</strong></div>
+          <div class="mail-group-employees">
+            {employees.map((employee) => <span data-employee={`${side}-${employee}`}>{employee}</span>)}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <div class="query-animation-legend" aria-hidden="true"><span><i class="legend-checking"></i>이번 단계 확인</span><span><i class="legend-matched"></i>찾은 관계</span></div>
+  <p class="query-animation-narration" data-narration aria-live="polite">{frames[0].caption}</p>
+  <div class="query-animation-controls">
+    <div class="query-animation-buttons">
+      <button type="button" data-action="previous" aria-label="이전 단계">←</button>
+      <button type="button" data-action="play" aria-label="애니메이션 재생">재생 ▶</button>
+      <button type="button" data-action="next" aria-label="다음 단계">→</button>
+    </div>
+    <span class="mail-group-phase" data-phase>{frames[0].phase}</span>
+    <div class="query-animation-progress" aria-hidden="true"><span data-progress style={`width: ${100 / frames.length}%`}></span></div>
+  </div>
+  <p class="query-animation-note">관계 13건과 사원 8명은 처리 흐름을 설명하는 예시입니다. 기존 Batch의 전체 실행 횟수나 실제 DB 호출 수를 나타내지 않습니다. AFTER의 Batch 동기화와 API 조회는 서로 다른 시점에 실행됩니다.</p>
+</section>

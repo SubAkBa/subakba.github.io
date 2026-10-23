@@ -400,6 +400,48 @@ button { cursor: pointer; }
 .service-assembly span { font-size: 9px; }
 .service-assembly em { width: auto; white-space: nowrap; }
 .service-animation .query-animation-progress { max-width: 155px; }
+.project-prose .mail-group-animation h3 { margin: 0; padding: 0; border: 0; background: none; font-size: 18px; letter-spacing: -.035em; }
+.mail-group-animation .query-animation-grid { align-items: stretch; }
+.mail-group-animation .query-animation-lane { display: flex; flex-direction: column; }
+.mail-group-animation .query-animation-lane-head { flex-wrap: wrap; }
+.mail-group-animation .query-animation-lane-head strong { white-space: normal; }
+.mail-group-flow { display: flex; flex: 1; flex-direction: column; gap: 7px; min-width: 0; padding: 12px; }
+.mail-group-flow-status { min-height: 28px; padding: 5px 8px; border-left: 3px solid var(--accent); background: var(--tint); color: var(--text); font-size: 10px; font-weight: 800; }
+.query-animation-before .mail-group-flow-status { border-left-color: var(--query-before); }
+.mail-group-stack { display: flex; min-height: 174px; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); background: var(--bg); }
+.mail-group-stack-head { display: flex; justify-content: space-between; gap: 8px; color: var(--subtle); font-size: 9px; font-weight: 850; letter-spacing: .08em; }
+.mail-group-stack-head strong { color: var(--query-before); font-size: 9px !important; letter-spacing: 0; }
+.mail-group-stack-frames { display: grid; gap: 3px; }
+.mail-group-stack-slot { display: flex; min-height: 25px; align-items: center; gap: 5px; margin-left: calc(var(--call-depth) * 10px); padding: 3px 6px; border: 1px dashed var(--line); color: var(--subtle); opacity: .48; font-size: 9px; line-height: 1.2; transition: background .3s ease, border-color .3s ease, color .3s ease, opacity .3s ease; }
+.mail-group-stack-slot code { min-width: 0; overflow-wrap: anywhere; font-size: 9px; }
+.mail-group-stack-slot.is-active { border-style: solid; border-color: color-mix(in srgb, var(--query-before) 55%, var(--line)); background: color-mix(in srgb, var(--query-before) 10%, var(--surface)); color: var(--text); opacity: 1; }
+.mail-group-stack-slot.is-current { border-color: var(--query-before); box-shadow: inset 3px 0 var(--query-before); color: var(--query-before); font-weight: 800; }
+.mail-group-stack-slot.is-popped { border-color: var(--query-before); color: var(--query-before); opacity: .82; }
+.mail-group-stack-slot.is-popped > span { transform: rotate(180deg); }
+.mail-group-stack-action { margin: auto 0 0 !important; color: var(--query-before); font-size: 9px; font-weight: 800; line-height: 1.35; }
+.mail-group-responsibility .mail-group-stack-head strong { color: var(--accent-strong); }
+.mail-group-responsibility-step { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px; border: 1px solid var(--line); color: var(--subtle); font-size: 9px; }
+.mail-group-responsibility-step b { flex: none; color: var(--text); }
+.mail-group-responsibility-step.is-active { border-color: var(--accent); background: var(--tint); color: var(--text); }
+.mail-group-responsibility-arrow { color: var(--accent-strong); font-size: 9px; font-weight: 800; text-align: center; }
+.mail-group-relation-head, .mail-group-relation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; align-items: center; text-align: left; }
+.mail-group-relation-head { padding: 1px 8px; color: var(--subtle); font-size: 9px; font-weight: 800; letter-spacing: .05em; }
+.mail-group-relations { display: grid; gap: 3px; }
+.mail-group-relation.data-viz-block { min-height: 27px; justify-content: stretch; padding: 3px 8px; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 10px; }
+.mail-group-relation .mail-group-subgroup { color: var(--accent-strong); font-weight: 850; }
+.mail-group-relation.is-checking { transform: none !important; animation: none !important; box-shadow: none !important; }
+.mail-group-relation.is-matched { border-color: var(--accent); background: var(--tint); }
+.query-animation-before .mail-group-relation.is-matched { border-color: var(--query-before); background: color-mix(in srgb, var(--query-before) 13%, var(--surface)); }
+.mail-group-flow-result { display: flex; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 7px; border-top: 1px solid var(--line); color: var(--subtle); font-size: 9px; font-weight: 700; }
+.mail-group-flow-result strong { color: var(--accent-strong); white-space: nowrap; }
+.query-animation-before .mail-group-flow-result strong { color: var(--query-before); }
+.mail-group-employees { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.mail-group-employees span { padding: 5px 2px; border: 1px solid var(--line); color: var(--subtle); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 8px; font-weight: 700; text-align: center; transition: background .3s ease, color .3s ease, border-color .3s ease; }
+.mail-group-employees span.is-found { border-color: var(--accent); background: var(--tint); color: var(--accent-strong); }
+.query-animation-before .mail-group-employees span.is-found { border-color: var(--query-before); background: color-mix(in srgb, var(--query-before) 13%, var(--surface)); color: var(--query-before); }
+.mail-group-animation .query-animation-controls { flex-wrap: wrap; }
+.mail-group-phase { color: var(--accent-strong); font-size: 10px; font-weight: 800; }
+.mail-group-animation .query-animation-progress { flex-basis: 100%; }
 .project-prose-case-study .project-case-panel > h2:first-child { margin-top: 0; border-top: 0; }
 .project-prose-case-study h3 { margin-top: 28px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-size: 15px; letter-spacing: 0; }
 .project-prose-case-study h3[id^="result"] + ul strong { color: var(--accent-strong); font-size: 1.08em; }
