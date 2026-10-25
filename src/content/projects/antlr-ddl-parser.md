@@ -2,8 +2,9 @@
 title: "ANTLR 기반 DDL Parser 재설계 및 레거시 Parser 교체"
 company: "N Tech Service"
 period: "2026.06 ~ 2026.07"
+role: "기술 검토부터 설계·구현·검증·운영 전환까지 단독 담당"
 category: "Parser Architecture"
-summary: "1만 줄 이상의 단일 파일과 높은 유지보수 비용을 가진 기존 DDL Parser를 ANTLR 기반으로 재설계하고, DBMS별 Parser 구조 분리와 검증 환경 구축을 통해 평균 유지보수 작업 시간을 약 1일에서 약 2시간으로 단축"
+summary: "JSqlParser 기반 DDL Parser의 지원 범위와 구조를 재설계하고, DBMS별 Grammar 분리와 결과 비교 검증을 거쳐 ANTLR Parser로 전환. 유지보수 작업은 통상 약 1일에서 약 2시간 수준으로 단축"
 skills:
   - Java
   - ANTLR4
@@ -13,54 +14,118 @@ order: 4
 draft: false
 ---
 
-## 문제와 원인
+기존 Parser의 변경 지점을 분석하고 시스템에 필요한 DDL 범위를 다시 정의했다. 이후 DBMS별 Grammar와 공통 Parsing 흐름을 분리하고, Legacy Parser와 결과를 비교하면서 운영 전환까지 진행했다.
 
-- 기존 DDL Parser는 JJT 문법 기반으로 구현되어 문법과 코드 구조를 파악하는 데 높은 학습 비용 발생
-- 하나의 파일에 1만 줄 이상의 코드가 집중되고 기능·DBMS별 책임이 혼재되어 버그 수정과 요구사항 변경의 영향 범위 파악이 어려움
-- 실제 시스템에서 사용하지 않는 DML·TCL Query Type까지 포함되어 DDL 처리에 불필요한 복잡도 존재
-- MySQL, MSSQL, PostgreSQL, Oracle 및 사내 전용 DBMS를 지원해야 했으나, 외부 오픈소스 Parser에서는 자체 DBMS 문법 확장이 어려움
-- 변경이 다른 DBMS와 DDL 처리 로직에 영향을 줄 가능성이 높아 유지보수 비용 증가
+## 기존 구조와 문제
 
-## Parser 기술 선정
+기존 시스템은 범용 SQL Parser인 JSqlParser의 소스를 시스템 요구에 맞게 일부 수정해 사용했다. [JSqlParserCC.jjt](https://github.com/JSQLParser/JSqlParser/blob/master/src/main/jjtree/net/sf/jsqlparser/parser/JSqlParserCC.jjt)를 기반으로 한 1만 줄 이상의 JJT 파일에 여러 SQL 유형과 DBMS 문법이 함께 있었다.
 
-기존 Parser의 구조적 문제 해결을 위해 범용 SQL Parser 교체와 Parser Generator 기반 DDL 문법 직접 구현 방식 비교
+- JJT/JavaCC 문법에 익숙하지 않으면 Parser의 동작과 변경 지점을 파악하기 어려웠다.
+- 시스템에서 사용하지 않는 DML·TCL 문법도 DDL과 함께 관리해야 했다.
+- DBMS별 문법이 한 파일에 섞여 있어 사내 DBMS나 신규 DDL 문법을 추가할 때 영향 범위가 넓었다.
+- Parser Bug로 사용자 문의가 반복되었고, 변경 때마다 기존 DDL의 동작도 확인해야 했다.
 
-| 후보 | 장점 | 이번 시스템에서의 판단 |
-| --- | --- | --- |
-| [JSqlParser](https://jsqlparser.github.io/JSqlParser/) | Java 객체 구조로 파싱 결과 제공, 여러 DBMS 문법 지원 | 사내 전용 DBMS 문법을 추가하려면 범용 Grammar와 관련 구조를 함께 관리해야 해 기존 유지보수 문제를 충분히 줄이기 어려움 |
-| [Apache Calcite](https://calcite.apache.org/) | SQL Parser 외에 Validation과 쿼리 최적화 기능 제공 | Parser를 별도로 사용할 수 있지만 DDL 문법만 직접 통제하려는 목표에 비해 기능 범위가 넓음 |
-| [jOOQ Parser](https://www.jooq.org/doc/latest/manual/sql-building/sql-parser/sql-parser-api/) | 여러 SQL Dialect 파싱 및 SQL 변환 기능 제공 | 자체 DDL Grammar를 중심으로 Parser를 설계하려는 요구와 방향이 다름 |
-| [JavaCC / JJTree](https://javacc.github.io/javacc/documentation/jjtree.html) | Grammar를 정의해 Java Parser와 Parse Tree 생성 가능 | 기존 Parser에서 경험한 JJT 문법과 Tree 처리 구조의 유지보수 비용을 근본적으로 줄이기 어려움 |
-| [ANTLR](https://github.com/antlr/antlr4) | Grammar 직접 정의, Lexer/Parser 생성, Parse Tree의 Listener/Visitor 제공 | Grammar를 직접 관리해야 하지만 필요한 DDL과 DBMS별 문법만 통제할 수 있음 |
+JSqlParser 자체의 한계라기보다 **범용 Parser를 직접 수정해 유지하는 방식이 Table·Column·Index 중심의 제한적인 DDL 요구사항과 맞지 않았다.** 문법과 DBMS가 늘수록 수정 범위와 검증 부담이 함께 커지는 구조였다.
 
-### ANTLR을 선택한 이유
+<figure class="parser-visual parser-architecture" aria-label="기존 Parser와 개선한 Parser 구조 비교">
+  <figcaption><span>ARCHITECTURE</span><strong>하나의 범용 문법 파일에서 DBMS별 책임 분리로</strong></figcaption>
+  <div class="parser-architecture-columns">
+    <section class="parser-architecture-lane is-legacy" aria-label="기존 구조">
+      <p class="parser-visual-label">BEFORE · JSqlParser 기반</p>
+      <div class="parser-visual-node"><strong>JSqlParserCC.jjt</strong><small>1만 줄 이상의 단일 문법 파일</small></div>
+      <span class="parser-visual-arrow" aria-hidden="true">↓</span>
+      <div class="parser-visual-node"><strong>SQL 유형과 DBMS 문법 혼재</strong><span class="parser-visual-chips"><em>DDL</em><em>DML</em><em>TCL</em><em>여러 DBMS</em></span></div>
+      <p class="parser-visual-note">한 문법을 고칠 때 다른 문법과 DBMS의 영향도 함께 확인</p>
+    </section>
+    <section class="parser-architecture-lane is-new" aria-label="개선 구조">
+      <p class="parser-visual-label">AFTER · ANTLR 기반</p>
+      <div class="parser-visual-node"><strong>Backend API</strong><small>dbmsType에 맞는 XxxDbmsParser 선택</small></div>
+      <span class="parser-visual-arrow" aria-hidden="true">↓</span>
+      <div class="parser-visual-node"><strong>DBMS별 Grammar · Parser</strong><small>XxxLexer.g4 + XxxParser.g4 + XxxDbmsParser</small></div>
+      <span class="parser-visual-arrow" aria-hidden="true">↓</span>
+      <div class="parser-visual-node"><strong>AbstractDbmsParser</strong><small>공통 Parsing 흐름 재사용 → Parse Tree</small></div>
+    </section>
+  </div>
+</figure>
 
-- 범용 SQL 전체가 아닌 DDL 처리에 집중하고 DML·TCL 등 미사용 문법은 제외할 수 있음
-- MySQL·Oracle·PostgreSQL·MSSQL뿐 아니라 사내 전용 DBMS의 문법을 직접 정의·확장할 수 있음
-- `.g4` Grammar로 Lexer/Parser를 생성하고, Listener/Visitor를 통해 Parse Tree 이후 처리 로직을 Java 코드로 분리할 수 있음
-- DBMS별 Parser 책임을 분리해 특정 문법 변경이 다른 DBMS에 미치는 영향을 제한할 수 있음
+## 기술 선정과 지원 범위
 
-**기술 선정 기준: SQL 문법 지원 범위보다 실제 사용하는 DDL 문법의 직접 통제·확장·유지보수 가능성**
+Parser 교체를 결정한 뒤 후보 기술을 문서 기반으로 비교했다. ANTLR을 선택한 기준은 전체 SQL 지원 범위보다 **현재 시스템에서 필요한 DDL을 직접 정의하고 DBMS별로 독립적으로 확장할 수 있는가**였다.
 
-## DDL Parser 구조 재설계
+- Table·Column·Index의 생성·수정·삭제에 필요한 문법만 Grammar에 정의할 수 있다.
+- DBMS별 Lexer와 Parser Grammar를 분리해 특정 DBMS의 문법 변경을 해당 구현 안에서 다룰 수 있다.
+- 밀접하게 연관된 다른 사내 시스템의 ANTLR Parser 설계·운영 사례를 참고할 수 있었다. 그 시스템은 DDL뿐 아니라 DML도 처리하고 있었다.
 
-- ANTLR 기반 DDL Parser를 신규 개발하고 `.g4` Grammar로 Lexer와 Parser 생성
-- DML·TCL 등 미사용 Query Type을 제거하고 시스템에서 필요한 DDL 처리에 집중
-- 파싱 이후 처리 로직을 Java로 구성하고, DBMS별 Parser 로직과 공통 처리 영역 분리
-- DBMS별 차이만 개별 구현하도록 구조화해 신규 DBMS 및 DDL 문법 확장에 대응
-- 반복적인 DBMS별 Parser 개발 작업을 표준화하기 위해 Codex Skill 작성
+신규 Parser는 모든 SQL을 처리하지 않는다. 지원 범위를 Table·Column·Index 관련 DDL로 제한하고, 시스템이 실제 사용하는 정보를 정확히 추출하는 데 집중했다.
 
-## 기존·신규 Parser 비교 검증 환경 구축
+| 대상 | 추출 정보 |
+| --- | --- |
+| Table | 이름 |
+| Column | 이름, Table 내 위치, Data Type, Collate, Charset, Nullable, Primary Key, Default, Comment |
+| Index | 이름, 유형, Column과 순서, 정렬 방식(`ASC`, `DESC`) |
 
-- Parser 교체 전 기존 기능과의 호환성을 확인하기 위한 별도 웹 프로젝트 개발
-- 동일한 DDL Script를 기존 jsql-parser 기반 Parser와 신규 ANTLR Parser에 입력해 파싱 결과 비교
-- 결과 차이를 검토하며 기존 Parser에서 처리하지 못했던 DDL Query와 Parser Bug 식별
-- 신규 Parser 적용 전 동작 차이를 확인할 수 있게 하여 교체에 따른 회귀 위험 최소화
+## DBMS별 Grammar와 공통 Parser 설계
 
-## 결과
+MySQL·Oracle·PostgreSQL·MSSQL 등 DBMS마다 Lexer와 Parser Grammar를 분리했다. Java 계층에서는 `DbmsParser`를 외부 API로 두고 `parse`, `validate`, `splitSQLByStatement`, `getAllEntities`를 제공한다.
 
-- **평균 유지보수 작업 시간: 약 1일 → 약 2시간**
-- **신규 Parser 구조 적용 이후 코드 수정에 따른 사이드 이펙트: 0건**
-- 기존 Parser에서 정상 처리하지 못했던 DDL Query 및 Parser Bug 개선
-- DBMS별 Parser 책임 분리와 공통 로직 추상화로 변경 영향 범위 축소
-- 불필요한 Query Type 제거와 역할 분리로 코드 가독성 및 유지보수성 개선
+`AbstractDbmsParser`는 ANTLR의 Lexer·Parser·ParserRuleContext를 이용하는 공통 Parsing 흐름을 담당한다. 각 `XxxDbmsParser`는 이를 상속해 Lexer와 Parser 생성, Root Rule 호출, DBMS별 Listener 지정만 구현한다. Backend API는 `dbmsType`에 맞는 Parser를 선택한다.
+
+```text
+DBMS별 구성
+├── XxxLexer.g4
+├── XxxParser.g4
+├── XxxDbmsParser
+├── XxxEntityCollector
+└── XxxSplitListener
+```
+
+공통 Pipeline을 재사용하므로 신규 DBMS를 추가할 때 기존 Parser 전체를 수정하지 않고 해당 DBMS의 Grammar와 구현에 집중할 수 있다. 이 반복 패턴을 Grammar → DbmsParser → EntityCollector → SplitListener → Test 순서로 정리한 Codex Skill도 작성했다.
+
+## ANTLR Parsing 흐름
+
+`antlr4-maven-plugin`이 빌드 시 `.g4` Grammar에서 Java 코드를 생성한다. 생성 결과는 `target/generated-sources/antlr4/`에 두고 직접 수정하지 않는다. Token·Keyword 변경은 Lexer Grammar에서, SQL 문장 구조 변경은 Parser Grammar에서 처리한 뒤 코드를 다시 생성한다.
+
+런타임에서는 SQL을 `CharStream`과 `CommonTokenStream`으로 전달하고 DBMS별 Lexer·Parser로 `ProgramContext`와 Parse Tree를 만든다. `CollectingErrorListener`는 Syntax Error를 시스템에서 사용하는 `ParseError` 형태로 수집한다.
+
+아래 애니메이션은 실제 사내 문법과 무관한 공개용 DDL 한 문장을 사용한다. 각 클래스가 받은 데이터, 처리한 일, 다음 단계에 넘긴 데이터를 순서대로 확인할 수 있다.
+
+<div id="parser-flow-animation-slot"></div>
+
+`SplitListener`는 `SingleStatementContext`를 기준으로 여러 SQL 문장을 분리하고 SQL Text·Offset·Line·Column을 수집한다. `EntityCollector`는 Parse Tree에서 Table·Column·Index의 이름과 위치를 찾아 `List<EntityContext>`로 반환한다.
+
+Grammar의 Rule과 Label은 생성되는 Context와 Listener API에 직접 연결된다. 따라서 Grammar를 수정할 때는 Syntax Parsing뿐 아니라 Statement 분리와 Entity 수집에 미치는 영향도 함께 확인했다.
+
+## Legacy 결과와 비교 검증
+
+신규 Parser를 즉시 교체하지 않고 별도 웹 프로젝트에서 두 Parser의 결과를 나란히 확인했다. DBMS와 DDL Query를 입력하면 각 Parser의 결과를 JSON으로 보여 주어 차이를 비교할 수 있게 했다.
+
+<figure class="parser-visual parser-comparison" aria-label="Legacy Parser와 ANTLR Parser의 결과 비교 검증">
+  <figcaption><span>COMPATIBILITY CHECK</span><strong>같은 DDL을 두 Parser에 입력하고 결과를 비교</strong></figcaption>
+  <div class="parser-comparison-input"><small>동일한 입력</small><strong>DBMS 선택 + DDL Query</strong></div>
+  <div class="parser-comparison-branches" aria-hidden="true"><span>↙</span><span>↘</span></div>
+  <div class="parser-comparison-lanes">
+    <div class="parser-comparison-lane"><span>LEGACY</span><strong>기존 Parser</strong><small>Parsing Result → JSON</small></div>
+    <div class="parser-comparison-lane is-new"><span>ANTLR</span><strong>신규 Parser</strong><small>Parsing Result → JSON</small></div>
+  </div>
+  <div class="parser-comparison-merge" aria-hidden="true">↘ &nbsp;&nbsp;&nbsp;&nbsp; ↙</div>
+  <div class="parser-comparison-result"><strong>반환 데이터 비교</strong><small>차이가 있으면 Grammar · Parse Tree · Listener 결과 · 기존 동작 확인</small></div>
+</figure>
+
+검증 기준은 Syntax Parsing 성공 여부에 그치지 않았다. **동일한 DDL에 대해 신규 Parser가 반환한 결과가 기존 Parser의 결과와 동일하게 동작하는지** 확인했다. 차이가 있으면 Grammar, Parse Tree, Listener 처리, Legacy Parser의 기존 동작 중 어디에서 비롯됐는지 살폈다.
+
+지원 대상과 미지원 대상 SQL을 파일로 관리했다. 대표적인 지원 대상 DDL 약 50개로 Syntax Parsing, Parse Tree 생성, Entity 추출을 자동 테스트했다.
+
+## 기존 문제 개선과 운영 전환
+
+호환성을 검증하면서 기존 Parser의 동작을 무조건 복제하지는 않았다. Legacy Parser가 지원하지 못하던 Function Based Index 생성 DDL을 지원 범위에 포함했다. 또 MySQL Column 정의에서 `DEFAULT CURRENT_TIMESTAMP`, `ON UPDATE CURRENT_TIMESTAMP`, `NOT NULL`의 위치 조합에 따라 Column 정보를 의도와 다르게 Parsing하던 문제를 개선했다. 이 문제는 사용자 문의로도 이어졌었다.
+
+전환은 **ANTLR Parser 구현 → 자동 테스트 → Legacy·ANTLR 결과 비교 → 병행 운영 및 검증 → Legacy Parser 제거** 순서로 진행했다. 이를 통해 기존에 정상 동작하던 DDL의 회귀 위험을 줄였다. 운영 반영 이후 현재까지 기존에 정상적으로 처리되던 DDL이 신규 Parser에서 동작하지 않는다는 사용자 문의는 발생하지 않았다.
+
+## 결과와 회고
+
+- **유지보수 작업 시간 단축:** Jira에 기록된 신규 DDL 지원·기존 DDL 변경·신규 DBMS 문법 추가 작업 시간과 Legacy Parser 작업 이력을 비교했을 때, 통상 약 1일 걸리던 작업이 전환 후 약 2시간 수준으로 줄었다.
+- **변경 영향 범위 축소:** DBMS별 Grammar와 Parser 구현을 분리해 특정 DBMS 문법 변경 시 다른 DBMS Parser에 미치는 영향을 줄였다.
+- **기존 동작 개선:** Function Based Index 지원과 MySQL `CURRENT_TIMESTAMP` 관련 Parsing 문제를 개선했다.
+- **안전한 전환:** 결과 비교 환경과 병행 검증을 거친 뒤 Legacy Parser를 제거했다.
+
+이번 작업의 핵심은 라이브러리 교체보다 Parser가 담당할 범위를 명확히 정의하고, 변경이 발생하는 지점을 DBMS별로 분리하며, 기존 동작과의 호환성을 검증할 수 있는 구조를 만든 데 있다.

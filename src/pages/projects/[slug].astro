@@ -6,6 +6,8 @@ import Footer from '../../components/Footer.astro';
 import QueryCaseAnimation from '../../components/QueryCaseAnimation.astro';
 import ServiceUserAnimation from '../../components/ServiceUserAnimation.astro';
 import MailGroupAnimation from '../../components/MailGroupAnimation.astro';
+import ParserFlowAnimation from '../../components/ParserFlowAnimation.astro';
+import '../../styles/parser-visuals.css';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -57,7 +59,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}</article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}{project.id === 'antlr-ddl-parser' && <ParserFlowAnimation />}</article>
       {isQueryCaseStudy && (
         <div class="query-animation-source" aria-hidden="true">
           <QueryCaseAnimation caseNumber={1} />

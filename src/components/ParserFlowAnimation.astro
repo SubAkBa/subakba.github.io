@@ -1,0 +1,225 @@
+---
+const query = 'CREATE TABLE example_table (id INT NOT NULL);';
+const steps = [
+  {
+    phase: '요청',
+    name: 'Backend API',
+    input: 'dbmsType = MySQL + DDL 원문',
+    action: 'DBMS 유형에 맞는 Parser 구현체를 선택한다.',
+    output: 'MySqlDbmsParser + DDL 원문',
+    handoff: '선택한 Parser에 SQL을 전달',
+  },
+  {
+    phase: 'DBMS별 연결',
+    name: 'MySqlDbmsParser',
+    input: 'DDL 원문',
+    action: 'MySQL용 Lexer·Parser 생성과 Root Rule·Listener 지정을 공통 Pipeline에 제공한다.',
+    output: 'MySqlLexer · MySqlParser · Root Rule · Listener',
+    handoff: '공통 Parsing 흐름에 DBMS별 구현 제공',
+  },
+  {
+    phase: '공통 준비',
+    name: 'AbstractDbmsParser',
+    input: 'DDL 원문 + DBMS별 구현',
+    action: 'SQL을 CharStream으로 바꾸고 Lexer·Parser를 잇는 공통 흐름을 실행한다.',
+    output: 'CharStream(DDL 원문)',
+    handoff: 'CharStream을 MySqlLexer에 전달',
+  },
+  {
+    phase: '어휘 분석',
+    name: 'MySqlLexer',
+    input: 'CharStream(DDL 원문)',
+    action: '문자열을 Keyword, 식별자, 기호 단위의 Token으로 나눈다. 공통 흐름이 이를 CommonTokenStream으로 묶는다.',
+    output: 'CREATE · TABLE · example_table · ( · id · INT · NOT · NULL · ) · ;',
+    handoff: 'CommonTokenStream을 MySqlParser에 전달',
+  },
+  {
+    phase: '문법 분석',
+    name: 'MySqlParser',
+    input: 'CommonTokenStream',
+    action: 'Root Rule부터 DDL 구조를 읽어 ProgramContext와 Parse Tree를 만든다. CollectingErrorListener가 Syntax Error를 수집한다.',
+    output: 'ProgramContext → Table 정의 → Column 정의 / ParseError 없음',
+    handoff: 'Parse Tree를 Statement 분리와 Entity 수집에 사용',
+  },
+  {
+    phase: '문장 분리',
+    name: 'SplitListener',
+    input: 'Parse Tree + DDL 원문',
+    action: 'SingleStatementContext를 기준으로 원문에서 Statement 구간을 추출한다.',
+    output: 'Statement 1: SQL Text · Offset · Line · Column',
+    handoff: 'Statement 정보를 반환 · 같은 Parse Tree는 EntityCollector에도 사용',
+  },
+  {
+    phase: 'Entity 수집',
+    name: 'EntityCollector',
+    input: 'Parse Tree',
+    action: 'Table과 Column의 이름·위치를 수집한다.',
+    output: 'List<EntityContext>: Table 이름 example_table · Column 이름 id',
+    handoff: 'Table·Column Entity 위치 정보를 Parser 결과로 반환',
+  },
+];
+---
+
+<section class="parser-animation" data-parser-animation aria-label="예시 DDL이 Parser 클래스를 거치는 과정">
+  <div class="parser-animation-head">
+    <div>
+      <p class="parser-visual-label">DDL PARSING · 1개 문장 예시</p>
+      <h3>쿼리 한 문장이 Parser 결과가 되기까지</h3>
+    </div>
+    <span class="parser-animation-counter" data-counter>01 / {String(steps.length).padStart(2, '0')}</span>
+  </div>
+  <div class="parser-animation-query">
+    <span>INPUT SQL · 설명용 예시</span>
+    <code>{query}</code>
+  </div>
+  <ol class="parser-animation-track" aria-label="Parsing 단계">
+    {steps.map((step, index) => (
+      <li>
+        <button
+          type="button"
+          class:list={['parser-animation-step', { 'is-current': index === 0 }]}
+          data-step={index}
+          aria-current={index === 0 ? 'step' : undefined}
+          aria-label={`${index + 1}단계 ${step.name}: ${step.phase}`}
+        >
+          <span>{String(index + 1).padStart(2, '0')}</span>
+          <strong>{step.name}</strong>
+        </button>
+      </li>
+    ))}
+  </ol>
+  <div class="parser-animation-frames">
+    {steps.map((step, index) => (
+      <section class="parser-animation-frame" data-frame={index} hidden={index !== 0} aria-label={`${index + 1}단계 ${step.name}`}>
+        <div class="parser-animation-frame-title">
+          <span>STEP {String(index + 1).padStart(2, '0')} · {step.phase}</span>
+          <strong>{step.name}</strong>
+        </div>
+        <div class="parser-animation-transformation">
+          <div class="parser-animation-data">
+            <span>받은 데이터</span>
+            <code>{step.input}</code>
+          </div>
+          <div class="parser-animation-action">
+            <span>처리</span>
+            <p>{step.action}</p>
+          </div>
+          <div class="parser-animation-data is-output">
+            <span>내보낸 데이터 · 개념 예시</span>
+            <code>{step.output}</code>
+          </div>
+        </div>
+        <p class="parser-animation-handoff"><span aria-hidden="true">↳</span> {step.handoff}</p>
+      </section>
+    ))}
+  </div>
+  <div class="parser-animation-controls">
+    <button type="button" data-previous aria-label="이전 단계" disabled>← 이전</button>
+    <button type="button" data-play aria-label="애니메이션 재생">재생 ▶</button>
+    <button type="button" data-next aria-label="다음 단계">다음 →</button>
+  </div>
+  <div class="parser-animation-progress" aria-hidden="true"><span data-progress style={`width: ${100 / steps.length}%`}></span></div>
+  <p class="parser-animation-caption">표시된 데이터는 흐름을 설명하기 위한 예시이며 실제 클래스의 직렬화 형식은 아니다.</p>
+</section>
+
+<script>
+  const animation = document.querySelector<HTMLElement>('[data-parser-animation]');
+  const slot = document.getElementById('parser-flow-animation-slot');
+  if (animation && slot) {
+    slot.replaceWith(animation);
+    const steps = Array.from(animation.querySelectorAll<HTMLButtonElement>('[data-step]'));
+    const frames = Array.from(animation.querySelectorAll<HTMLElement>('[data-frame]'));
+    const counter = animation.querySelector<HTMLElement>('[data-counter]');
+    const progress = animation.querySelector<HTMLElement>('[data-progress]');
+    const previous = animation.querySelector<HTMLButtonElement>('[data-previous]');
+    const next = animation.querySelector<HTMLButtonElement>('[data-next]');
+    const playButton = animation.querySelector<HTMLButtonElement>('[data-play]');
+    let current = 0;
+    let timer: number | undefined;
+    let userControlled = false;
+
+    const render = () => {
+      steps.forEach((step, index) => {
+        const selected = index === current;
+        step.classList.toggle('is-current', selected);
+        if (selected) step.setAttribute('aria-current', 'step');
+        else step.removeAttribute('aria-current');
+        step.classList.toggle('is-complete', index < current);
+      });
+      frames.forEach((frame, index) => {
+        frame.hidden = index !== current;
+        if (index === current) {
+          frame.classList.remove('is-entering');
+          void frame.offsetWidth;
+          frame.classList.add('is-entering');
+        }
+      });
+      if (counter) counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+      if (progress) progress.style.width = `${((current + 1) / steps.length) * 100}%`;
+      if (previous) previous.disabled = current === 0;
+      if (next) next.disabled = current === steps.length - 1;
+      if (!timer && playButton) {
+        playButton.textContent = current === steps.length - 1 ? '처음부터 ↺' : '재생 ▶';
+        playButton.setAttribute('aria-label', current === steps.length - 1 ? '처음부터 재생' : '애니메이션 재생');
+      }
+    };
+
+    const pause = () => {
+      window.clearInterval(timer);
+      timer = undefined;
+      if (playButton) {
+        playButton.textContent = current === steps.length - 1 ? '처음부터 ↺' : '재생 ▶';
+        playButton.setAttribute('aria-label', current === steps.length - 1 ? '처음부터 재생' : '애니메이션 재생');
+      }
+    };
+
+    const play = () => {
+      if (timer) return;
+      if (current === steps.length - 1) current = 0;
+      render();
+      if (playButton) {
+        playButton.textContent = '일시정지 Ⅱ';
+        playButton.setAttribute('aria-label', '애니메이션 일시정지');
+      }
+      timer = window.setInterval(() => {
+        if (current === steps.length - 1) {
+          pause();
+          return;
+        }
+        current += 1;
+        render();
+      }, 4000);
+    };
+
+    steps.forEach((step, index) => step.addEventListener('click', () => {
+      userControlled = true;
+      pause();
+      current = index;
+      render();
+    }));
+    previous?.addEventListener('click', () => {
+      userControlled = true;
+      pause();
+      current = Math.max(0, current - 1);
+      render();
+    });
+    next?.addEventListener('click', () => {
+      userControlled = true;
+      pause();
+      current = Math.min(steps.length - 1, current + 1);
+      render();
+    });
+    playButton?.addEventListener('click', () => {
+      userControlled = true;
+      timer ? pause() : play();
+    });
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && current === 0 && !timer && !userControlled) play();
+        if (!entries[0].isIntersecting && timer) pause();
+      }, { threshold: 0.35 });
+      observer.observe(animation);
+    }
+  }
+</script>
