@@ -44,10 +44,15 @@
 .parser-animation-head .parser-visual-label { margin: 0 0 5px; }
 .project-prose .parser-animation h3 { margin: 0; color: var(--text); font-size: 19px; line-height: 1.4; letter-spacing: -.035em; }
 .parser-animation-counter { flex: none; color: var(--subtle); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.parser-animation-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.parser-animation-tabs button { min-width: 0; padding: 10px 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 800; cursor: pointer; }
+.parser-animation-tabs button:hover { border-color: var(--accent); color: var(--text); }
+.parser-animation-tabs button[aria-selected="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--text); box-shadow: inset 0 -3px var(--accent); }
+.parser-animation-panel[hidden] { display: none; }
 .parser-animation-query { display: flex; flex-direction: column; gap: 7px; padding: 13px 15px; border: 1px solid var(--line); background: var(--tint); }
 .parser-animation-query > span { color: var(--subtle); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
 .parser-animation-query code { color: var(--text); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.parser-animation-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 16px 0 !important; padding: 0 !important; list-style: none; }
+.parser-animation-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 16px 0 !important; padding: 0 !important; list-style: none; }
 .parser-animation-track li { min-width: 0; padding: 0 !important; }
 .parser-animation-step { display: flex; width: 100%; min-height: 70px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 9px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); text-align: left; transition: background .2s ease, border-color .2s ease, box-shadow .2s ease; }
 .parser-animation-step span { color: var(--accent-strong); font-size: 10px; font-weight: 800; }
@@ -60,12 +65,13 @@
 .parser-animation-frame-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 13px 15px; border-bottom: 1px solid var(--line); background: var(--tint); }
 .parser-animation-frame-title span { color: var(--accent-strong); font-size: 10px; font-weight: 800; letter-spacing: .05em; }
 .parser-animation-frame-title strong { color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
+.parser-animation-frame-title small { margin-left: auto; color: var(--subtle); font-size: 11px; overflow-wrap: anywhere; }
 .parser-animation-transformation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.25fr); }
 .parser-animation-data, .parser-animation-action { display: flex; min-width: 0; min-height: 145px; flex-direction: column; gap: 10px; padding: 14px; border-right: 1px solid var(--line); }
 .parser-animation-data.is-output { border-right: 0; background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
 .parser-animation-data > span, .parser-animation-action > span { color: var(--subtle); font-size: 10px; font-weight: 800; letter-spacing: .05em; }
 .parser-animation-data.is-output > span { color: var(--accent-strong); }
-.parser-animation-data code { color: var(--text); font-size: 11px; line-height: 1.65; white-space: normal; overflow-wrap: anywhere; }
+.parser-animation-data code { color: var(--text); font-size: 11px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .project-prose .parser-animation-action p { margin: 0; color: var(--text); font-size: 12px; line-height: 1.7; }
 .project-prose .parser-animation-handoff { display: flex; gap: 7px; margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--accent-strong); font-size: 11px; font-weight: 700; }
 .parser-animation-handoff span { font-size: 16px; line-height: 1; }
@@ -76,7 +82,16 @@
 .parser-animation-controls button:disabled { opacity: .45; cursor: default; }
 .parser-animation-progress { height: 3px; margin-top: 14px; background: var(--line); }
 .parser-animation-progress span { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
+.parser-animation-result { margin-top: 15px; padding: 12px 14px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.parser-animation-result strong { color: var(--accent-strong); font-size: 12px; }
+.project-prose .parser-animation-result p { margin: 5px 0 0; color: var(--text); font-size: 12px; line-height: 1.6; }
+.parser-animation-result code { font-size: 11px; overflow-wrap: anywhere; }
 .project-prose .parser-animation-caption { margin: 11px 0 0; color: var(--subtle); font-size: 10px; line-height: 1.5; }
+.project-prose .parser-terms { margin: 18px 0; padding: 12px 15px; border: 1px solid var(--line); background: var(--tint); font-size: 13px; }
+.parser-terms summary { color: var(--accent-strong); font-weight: 750; cursor: pointer; }
+.project-prose .parser-terms ul { margin: 12px 0 0; padding-left: 20px; }
+.project-prose .parser-terms li { margin: 6px 0; }
+.project-prose .parser-terms p { margin: 12px 0 0; line-height: 1.65; }
 
 @keyframes parser-frame-enter {
   from { opacity: .5; transform: translateY(6px); }
@@ -87,8 +102,10 @@
   .parser-visual, .parser-animation { padding: 15px; }
   .parser-architecture-columns { grid-template-columns: 1fr; }
   .parser-architecture-lane { padding: 14px; }
+  .parser-animation-tabs button { padding: 9px 4px; font-size: 10px; }
   .parser-animation-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .parser-animation-step { min-height: 60px; }
+  .parser-animation-frame-title small { width: 100%; margin-left: 0; }
   .parser-animation-transformation { grid-template-columns: 1fr; }
   .parser-animation-data, .parser-animation-action { min-height: 0; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
   .parser-animation-data.is-output { border-bottom: 0; }

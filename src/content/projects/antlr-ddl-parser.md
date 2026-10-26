@@ -83,17 +83,24 @@ DBMS별 구성
 
 ## ANTLR Parsing 흐름
 
-`antlr4-maven-plugin`이 빌드 시 `.g4` Grammar에서 Java 코드를 생성한다. 생성 결과는 `target/generated-sources/antlr4/`에 두고 직접 수정하지 않는다. Token·Keyword 변경은 Lexer Grammar에서, SQL 문장 구조 변경은 Parser Grammar에서 처리한 뒤 코드를 다시 생성한다.
-
-런타임에서는 SQL을 `CharStream`과 `CommonTokenStream`으로 전달하고 DBMS별 Lexer·Parser로 `ProgramContext`와 Parse Tree를 만든다. `CollectingErrorListener`는 Syntax Error를 시스템에서 사용하는 `ParseError` 형태로 수집한다.
-
-아래 애니메이션은 실제 사내 문법과 무관한 공개용 DDL 한 문장을 사용한다. 각 클래스가 받은 데이터, 처리한 일, 다음 단계에 넘긴 데이터를 순서대로 확인할 수 있다.
+실행할 때는 **DBMS 선택 → 쿼리를 단어와 기호로 구분 → SQL 구조 파악 → 문장 위치와 테이블·컬럼 정보 추출** 순서로 진행한다. 아래 탭에서 `CREATE TABLE`, `ALTER TABLE`, 여러 SQL 문장을 선택하면 각 단계에서 데이터가 어떻게 달라지는지 볼 수 있다. 실제 사내 문법과 무관한 공개용 쿼리다.
 
 <div id="parser-flow-animation-slot"></div>
 
-`SplitListener`는 `SingleStatementContext`를 기준으로 여러 SQL 문장을 분리하고 SQL Text·Offset·Line·Column을 수집한다. `EntityCollector`는 Parse Tree에서 Table·Column·Index의 이름과 위치를 찾아 `List<EntityContext>`로 반환한다.
+`SplitListener`는 분석된 SQL 구조에서 문장별 원문과 위치를 기록한다. `EntityCollector`는 **같은 구조**에서 Table·Column·Index의 이름과 위치를 추출한다. 여러 SQL 문장이 한 번에 들어와도 문장 단위로 나누고, 필요한 객체 정보를 찾을 수 있다.
 
-Grammar의 Rule과 Label은 생성되는 Context와 Listener API에 직접 연결된다. 따라서 Grammar를 수정할 때는 Syntax Parsing뿐 아니라 Statement 분리와 Entity 수집에 미치는 영향도 함께 확인했다.
+<details class="parser-terms">
+  <summary>ANTLR 구현 용어 살펴보기</summary>
+  <ul>
+    <li><code>CharStream</code>: SQL 원문을 ANTLR에 전달하는 입력 형식</li>
+    <li><code>CommonTokenStream</code>: Lexer가 구분한 단어와 기호를 Parser에 전달하는 묶음</li>
+    <li><code>ProgramContext</code>·Parse Tree: Parser가 SQL을 해석해 만든 문장 구조</li>
+    <li><code>SingleStatementContext</code>: 그 구조 안에서 SQL 한 문장에 해당하는 부분</li>
+    <li><code>CollectingErrorListener</code>: 문법에 맞지 않는 부분을 감지해 <code>ParseError</code>로 기록하는 클래스</li>
+  </ul>
+  <p><code>antlr4-maven-plugin</code>은 빌드 시 <code>.g4</code> Grammar에서 Java 코드를 생성한다. 생성 결과는 <code>target/generated-sources/antlr4/</code>에 두고 직접 수정하지 않는다. 단어·키워드는 Lexer Grammar에서, SQL 문장 구조는 Parser Grammar에서 수정한 뒤 코드를 다시 생성한다.</p>
+  <p>Grammar의 Rule과 Label은 생성되는 Context와 Listener API에 직접 연결되므로, 문법 변경 시 문장 분리와 객체 추출 결과까지 확인했다.</p>
+</details>
 
 ## Legacy 결과와 비교 검증
 
