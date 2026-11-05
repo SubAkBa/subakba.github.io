@@ -2,7 +2,7 @@
 title: "DBMS 오브젝트 동기화 구조 개선"
 company: "N Tech Service"
 category: "Architecture Refactoring"
-summary: "여러 DBMS의 오브젝트 동기화에서 JDBC 실행 흐름과 DBMS별 처리 로직을 분리하고, Registry와 조합 구조로 확장 시 변경 범위를 줄인 설계"
+summary: "여러 DBMS의 오브젝트 동기화에서 JDBC 실행 흐름과 DBMS별 처리 로직을 분리하고, Factory와 조합 구조로 확장 시 변경 범위를 줄인 설계"
 skills:
   - Java
   - Spring Boot
@@ -41,11 +41,11 @@ draft: false
 
 기존 구조에서는 이러한 공통 로직과 DBMS별 비즈니스 로직이 혼재되어 있어 중복 코드가 발생했고, 신규 DBMS 및 오브젝트를 추가할 때 기존 코드를 수정해야 하는 문제가 있었다.
 
-이를 해결하기 위해 **Template Method, Strategy, Composition 및 Registry 구조를 활용하여 DBMS 오브젝트 동기화 구조를 재설계했다.**
+이를 해결하기 위해 **Template Method, Strategy, Composition 및 Factory 구조를 활용하여 DBMS 오브젝트 동기화 구조를 재설계했다.**
 
 ## 기존 구조의 문제점
 
-### JDBC 자원 관리 코드 중복 및 자원 누수 위험
+### Problem 1. JDBC 자원 관리
 
 기존에는 DBMS별 동기화 로직에서 JDBC 자원을 직접 생성하고 해제했다.
 
@@ -61,19 +61,11 @@ stmt.close();
 conn.close();
 ```
 
-이러한 구조에는 다음과 같은 문제가 있었다.
+- **원인** · JDBC 자원 생성과 해제가 DBMS별 구현에 반복됐다.
+- **실패 경로** · SQL 실행이나 결과 처리 중 예외가 발생하면 뒤에 있는 `close()` 호출에 도달하지 못했다. 일부 구현에는 해제 호출도 빠져 있었다.
+- **영향** · 연결 등 JDBC 자원이 누수될 수 있었고, 자원 관리 정책을 바꾸려면 여러 구현체를 함께 수정해야 했다.
 
-- DBMS별 동기화 구현체마다 JDBC 자원 처리 코드 중복
-- JDBC 자원 관리 정책 변경 시 여러 구현체 수정 필요
-- 비즈니스 로직과 JDBC 자원 관리 책임 혼재
-- 일부 구현에서 `close()` 누락
-- 예외 발생 시 JDBC 자원이 해제되지 않을 가능성
-
-특히 `try-with-resources`나 `finally`를 통한 자원 해제 보장이 없는 코드에서는 SQL 실행 또는 결과 처리 도중 예외가 발생하면 이후 `close()`가 호출되지 않을 수 있었다.
-
-이는 데이터베이스 연결 등의 자원 누수로 이어질 위험이 있었다.
-
-### DBMS별 구현체 선택을 위한 조건문
+### Problem 2. DBMS 분기
 
 기존에는 오브젝트별 동기화 API에서 DBMS 코드를 비교하여 해당 DBMS의 구현체를 선택했다.
 
@@ -87,17 +79,10 @@ if (dbmsCode.equals("ORACLE")) {
 }
 ```
 
-동기화 API는 오브젝트 종류별로 구분되어 있었지만, 각 API에서는 DBMS에 따라 서로 다른 구현체를 호출해야 했다.
+- **원인** · 오브젝트별 API가 DBMS 코드를 비교하고 구체 구현체를 직접 호출했다.
+- **영향** · 신규 DBMS를 지원하려면 관련 API의 분기를 각각 수정해야 했다. Sequence나 Synonym처럼 일부 DBMS만 지원하는 오브젝트도 따로 고려해야 했다.
 
-따라서 신규 DBMS가 추가되면 해당 DBMS를 처리하기 위한 조건문도 추가해야 했다.
-
-또한 DBMS마다 지원하는 오브젝트 종류가 다르다는 점도 고려해야 했다.
-
-예를 들어 Table, Column, Index는 모든 DBMS에서 지원하지만 Sequence, View, Synonym 등은 일부 DBMS에서만 지원했다.
-
-이러한 구조에서는 **구현체를 선택하는 로직과 실제 동기화 비즈니스 로직이 강하게 결합되어 변경 범위가 넓어지는 문제**가 있었다.
-
-### 새로운 기능 추가에 따른 변경 범위 증가
+### Problem 3. 변경 범위
 
 기존 구조에서는 변경 유형에 따라 여러 영역을 함께 수정해야 했다.
 
@@ -118,7 +103,7 @@ if (dbmsCode.equals("ORACLE")) {
 2. **Template Method 적용:** 공통 실행 순서는 상위 클래스에서 정의하고 DBMS별 세부 로직만 하위 클래스에서 구현
 3. **오브젝트 동기화 기능 분리:** Table, Index, Sequence 등 오브젝트별 동기화 구현체 분리
 4. **Composition 적용:** DBMS별 Synchronizer가 지원하는 오브젝트 동기화 구현체만 보유
-5. **Registry 도입:** Spring Bean과 Map을 활용하여 DBMS별 구현체 선택 로직 중앙화
+5. **Factory 도입:** Spring Bean과 Map을 활용하여 DBMS별 구현체 선택 로직 중앙화
 6. **JDBC 자원 관리 개선:** `try-with-resources`를 적용하여 예외 발생 시 자원 해제 보장
 
 핵심은 **공통 실행 흐름은 재사용하고, DBMS 및 오브젝트별 차이는 독립적인 구현체로 분리하는 것**이었다.
@@ -129,61 +114,39 @@ if (dbmsCode.equals("ORACLE")) {
 
 기존의 DBMS별 동기화 로직을 다음과 같이 역할별로 분리했다.
 
-<figure class="project-diagram">
-  <a href="/images/projects/dbms-object-synchronization/architecture.png" target="_blank" rel="noopener noreferrer" aria-label="DBMS 오브젝트 동기화 전체 설계도 원본 크기로 보기">
-    <img src="/images/projects/dbms-object-synchronization/architecture.png" alt="DBMS Registry, DBMS별 Synchronizer, 오브젝트별 Synchronizer와 공통 JDBC Template Method의 관계를 보여주는 설계도" width="1536" height="1024" loading="lazy" />
-  </a>
-  <figcaption>DBMS와 오브젝트별 동기화 구조 · 이미지를 선택하면 원본 크기로 볼 수 있다.</figcaption>
+<figure class="sync-diagram" aria-labelledby="sync-diagram-title">
+  <figcaption id="sync-diagram-title"><span>ARCHITECTURE</span><strong>DBMS 선택과 오브젝트 동기화 책임 분리</strong></figcaption>
+  <div class="sync-diagram-flow" aria-label="요청에서 DBMS 동기화 구현체 선택까지">
+    <div class="sync-diagram-node"><small>REQUEST</small><strong>Controller / Service</strong><span>동기화 요청</span></div>
+    <span class="sync-diagram-flow-arrow" aria-hidden="true">→</span>
+    <div class="sync-diagram-node is-factory"><small>FACTORY</small><strong>DbmsFactory</strong><span>get(DbmsType) → DbmsSynchronizer</span><span>Spring Bean을 DBMS 타입별로 조회</span></div>
+    <span class="sync-diagram-flow-arrow" aria-hidden="true">→</span>
+    <div class="sync-diagram-node"><small>CONTRACT</small><strong>DbmsSynchronizer</strong><span>sync(ObjectType, Connection)</span></div>
+  </div>
+  <div class="sync-diagram-down"><span aria-hidden="true">↓</span><small>DBMS별 클래스가 DbmsSynchronizer 구현</small></div>
+  <div class="sync-diagram-dbms" aria-label="DBMS별 오브젝트 동기화 구현 예시">
+    <div class="sync-diagram-dbms-card"><small>ORACLE</small><strong>OracleSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>OracleTableSynchronizer</strong></li><li><span>INDEX</span><strong>OracleIndexSynchronizer</strong></li><li><span>SEQUENCE</span><strong>OracleSequenceSynchronizer</strong></li></ul></div>
+    <div class="sync-diagram-dbms-card"><small>MYSQL</small><strong>MySqlSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>MySqlTableSynchronizer</strong></li><li><span>INDEX</span><strong>MySqlIndexSynchronizer</strong></li></ul></div>
+    <div class="sync-diagram-dbms-card"><small>POSTGRESQL</small><strong>PostgreSqlSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>PostgreSqlTableSynchronizer</strong></li><li><span>SEQUENCE</span><strong>PostgreSqlSequenceSynchronizer</strong></li></ul></div>
+  </div>
+  <div class="sync-diagram-down"><span aria-hidden="true">↓</span><small>오브젝트 구현체가 AbstractObjectSynchronizer 상속</small></div>
+  <div class="sync-diagram-template">
+    <div><small>SHARED TEMPLATE METHOD</small><strong>AbstractObjectSynchronizer</strong><span>ObjectSynchronizer 구현 · sync(Connection)</span></div>
+    <ol aria-label="공통 JDBC 실행 순서"><li>getQuery()로 조회 SQL 생성</li><li>Statement로 SQL 실행</li><li>syncObject(ResultSet) 호출</li><li>ResultSet과 Statement 해제</li></ol>
+  </div>
+  <p class="sync-diagram-note">각 DBMS는 지원하는 오브젝트 구현체만 조합한다. 구체 구현체는 공통 실행 흐름을 재사용하고 SQL 생성과 결과 처리를 각각 구현한다.</p>
 </figure>
 
-```text
-Controller / Service
-        │
-        ▼
-DbmsRegistry
-        │
-        ▼
-DbmsSynchronizer
-        │
-        ├── OracleSynchronizer
-        │       ├── OracleTableSynchronizer
-        │       ├── OracleIndexSynchronizer
-        │       └── OracleSequenceSynchronizer
-        │
-        ├── MySqlSynchronizer
-        │       ├── MySqlTableSynchronizer
-        │       └── MySqlIndexSynchronizer
-        │
-        └── PostgreSqlSynchronizer
-                ├── PostgreSqlTableSynchronizer
-                └── PostgreSqlSequenceSynchronizer
+#### 실행 예시 · Oracle TABLE 동기화
 
-ObjectSynchronizer
-        ▲
-        │
-AbstractObjectSynchronizer
-        ▲
-        │
-        ├── OracleTableSynchronizer
-        ├── MySqlTableSynchronizer
-        ├── PostgreSqlTableSynchronizer
-        └── ...
-```
+1. **DBMS 선택** · 호출부가 `dbmsFactory.get(DbmsType.ORACLE)`로 `OracleSynchronizer`를 받는다.
+2. **오브젝트 선택** · `sync(ObjectType.TABLE, connection)`을 호출하면 `OracleSynchronizer`가 Map에서 `OracleTableSynchronizer`를 찾아 작업을 위임한다.
+3. **메타데이터 처리** · 공통 `sync(Connection)`이 Oracle 전용 SQL을 실행하고, `syncObject(ResultSet)`이 조회 결과를 테이블 메타데이터로 변환한다.
+4. **자원 해제** · 공통 실행 코드가 `ResultSet`과 `Statement`를 닫는다. 예시에서 `Connection`은 호출부가 관리한다.
 
-각 구성 요소의 책임은 다음과 같다.
+아래 탭에서 각 패턴이 해결한 문제와 적용 코드를 볼 수 있다.
 
-| 구성 요소 | 역할 |
-|---|---|
-| DbmsRegistry | DBMS 타입에 해당하는 Synchronizer 조회 |
-| DbmsSynchronizer | DBMS별 동기화 기능의 공통 계약 |
-| OracleSynchronizer 등 | 지원하는 오브젝트 동기화 구현체를 관리하고 실행 위임 |
-| ObjectSynchronizer | 오브젝트 동기화 기능의 공통 계약 |
-| AbstractObjectSynchronizer | JDBC 실행 흐름 및 자원 관리 |
-| OracleTableSynchronizer 등 | DBMS 및 오브젝트별 메타데이터 조회·설정 |
-
-이를 통해 사용처에서는 구체적인 DBMS별 구현체를 직접 알 필요 없이 공통 인터페이스를 통해 동기화를 요청할 수 있도록 구성했다.
-
-### Template Method를 활용한 JDBC 실행 흐름 공통화
+### Pattern 1. Template Method
 
 DBMS별로 반복되는 JDBC 실행 흐름을 `AbstractObjectSynchronizer` 추상 클래스로 통합했다.
 
@@ -192,25 +155,21 @@ DBMS별로 반복되는 JDBC 실행 흐름을 `AbstractObjectSynchronizer` 추�
 구조를 단순화하면 다음과 같다.
 
 ```java
-public abstract class AbstractObjectSynchronizer
-        implements ObjectSynchronizer {
+public abstract class AbstractObjectSynchronizer implements ObjectSynchronizer {
 
     @Override
     public void sync(Connection connection) throws SQLException {
         String sql = getQuery();
 
-        try (
-            Statement stmt = connection.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)
-        ) {
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
             syncObject(rs);
         }
     }
 
     protected abstract String getQuery();
 
-    protected abstract void syncObject(ResultSet rs)
-            throws SQLException;
+    protected abstract void syncObject(ResultSet rs) throws SQLException;
 }
 ```
 
@@ -225,13 +184,16 @@ public abstract class AbstractObjectSynchronizer
 3. `syncObject()`를 호출하여 DBMS별 결과 처리
 4. `try-with-resources`를 통한 JDBC 자원 해제
 
+### Pattern 2. Strategy
+
+같은 TABLE 동기화 요청이라도 DBMS마다 조회 SQL과 결과 매핑이 다르다. 이 차이를 오브젝트별 전략으로 분리했다.
+
 하위 클래스는 공통 실행 흐름을 다시 구현하지 않고, DBMS별로 달라지는 메서드만 오버라이딩한다.
 
 예를 들어 Oracle과 MySQL의 Table 동기화 구현은 다음과 같이 구성할 수 있다.
 
 ```java
-public class OracleTableSynchronizer
-        extends AbstractObjectSynchronizer {
+public class OracleTableSynchronizer extends AbstractObjectSynchronizer {
 
     @Override
     protected String getQuery() {
@@ -239,16 +201,14 @@ public class OracleTableSynchronizer
     }
 
     @Override
-    protected void syncObject(ResultSet rs)
-            throws SQLException {
+    protected void syncObject(ResultSet rs) throws SQLException {
         // Oracle 전용 Table 속성 및 설정 처리
     }
 }
 ```
 
 ```java
-public class MySqlTableSynchronizer
-        extends AbstractObjectSynchronizer {
+public class MySqlTableSynchronizer extends AbstractObjectSynchronizer {
 
     @Override
     protected String getQuery() {
@@ -256,8 +216,7 @@ public class MySqlTableSynchronizer
     }
 
     @Override
-    protected void syncObject(ResultSet rs)
-            throws SQLException {
+    protected void syncObject(ResultSet rs) throws SQLException {
         // MySQL 전용 Table 속성 및 설정 처리
     }
 }
@@ -269,7 +228,7 @@ public class MySqlTableSynchronizer
 
 또한 기존에 명시적으로 호출하던 `close()`를 `try-with-resources`로 변경하여 SQL 실행 또는 결과 처리 도중 예외가 발생하더라도 관리 대상 JDBC 자원이 해제되도록 개선했다.
 
-### Composition을 활용한 DBMS별 지원 오브젝트 구성
+### Pattern 3. Composition
 
 DBMS마다 지원하는 오브젝트가 다르다는 점을 고려하여 오브젝트별 동기화 구현체를 분리했다.
 
@@ -277,8 +236,7 @@ DBMS마다 지원하는 오브젝트가 다르다는 점을 고려하여 오브�
 
 ```java
 public interface DbmsSynchronizer {
-    void sync(ObjectType objectType, Connection connection)
-            throws SQLException;
+    void sync(ObjectType objectType, Connection connection) throws SQLException;
 }
 ```
 
@@ -286,8 +244,7 @@ Oracle의 경우 다음과 같이 구성할 수 있다.
 
 ```java
 @Component
-public class OracleSynchronizer
-        implements DbmsSynchronizer {
+public class OracleSynchronizer implements DbmsSynchronizer {
 
     private final Map<ObjectType, ObjectSynchronizer> synchronizers;
 
@@ -300,18 +257,11 @@ public class OracleSynchronizer
     }
 
     @Override
-    public void sync(
-            ObjectType objectType,
-            Connection connection
-    ) throws SQLException {
-
-        ObjectSynchronizer synchronizer =
-                synchronizers.get(objectType);
+    public void sync(ObjectType objectType, Connection connection) throws SQLException {
+        ObjectSynchronizer synchronizer = synchronizers.get(objectType);
 
         if (synchronizer == null) {
-            throw new IllegalArgumentException(
-                "Unsupported object type: " + objectType
-            );
+            throw new IllegalArgumentException("Unsupported object type: " + objectType);
         }
 
         synchronizer.sync(connection);
@@ -346,7 +296,7 @@ public class OracleSynchronizer
 
 또한 화면에서는 DBMS별 지원 오브젝트를 기준으로 선택할 수 없는 항목을 비활성화하여 사용자가 지원하지 않는 동기화 기능을 요청하지 않도록 처리했다.
 
-### Spring Bean과 Registry를 활용한 DBMS 선택 로직 개선
+### Pattern 4. Factory
 
 기존에는 동기화 API에서 DBMS 코드를 비교하여 구체적인 Processor를 선택했다.
 
@@ -358,38 +308,30 @@ if (dbmsCode.equals("ORACLE")) {
 }
 ```
 
-이를 개선하기 위해 DBMS별 Synchronizer를 Spring Bean으로 등록하고, 별도 Registry에서 관리하도록 변경했다.
+이를 개선하기 위해 DBMS별 Synchronizer를 Spring Bean으로 등록하고, 별도 Factory에서 관리하도록 변경했다.
 
 ```java
 @Component
-public class DbmsRegistry {
+public class DbmsFactory {
 
     private final Map<DbmsType, DbmsSynchronizer> synchronizers;
 
-    public DbmsRegistry(List<DbmsSynchronizer> processors) {
+    public DbmsFactory(List<DbmsSynchronizer> processors) {
         this.synchronizers = processors.stream()
-            .collect(Collectors.toMap(
-                this::resolveDbmsType,
-                Function.identity()
-            ));
+            .collect(Collectors.toMap(this::resolveDbmsType, Function.identity()));
     }
 
     public DbmsSynchronizer get(DbmsType dbmsType) {
-        DbmsSynchronizer synchronizer =
-                synchronizers.get(dbmsType);
+        DbmsSynchronizer synchronizer = synchronizers.get(dbmsType);
 
         if (synchronizer == null) {
-            throw new IllegalArgumentException(
-                "Unsupported DBMS: " + dbmsType
-            );
+            throw new IllegalArgumentException("Unsupported DBMS: " + dbmsType);
         }
 
         return synchronizer;
     }
 
-    private DbmsType resolveDbmsType(
-            DbmsSynchronizer synchronizer
-    ) {
+    private DbmsType resolveDbmsType(DbmsSynchronizer synchronizer) {
         // 구현체에 대응하는 DBMS 타입 반환
     }
 }
@@ -397,22 +339,21 @@ public class DbmsRegistry {
 
 Spring에서 등록한 구현체들을 주입받아 DBMS 타입을 Key로 사용하는 Map을 구성하는 방식이다.
 
-이를 통해 DBMS 선택을 위한 조건문을 Registry 내부의 조회 로직으로 대체했다.
+이를 통해 DBMS 선택을 위한 조건문을 Factory 내부의 조회 로직으로 대체했다.
 
 호출부에서는 다음과 같이 사용할 수 있다.
 
 ```java
-DbmsSynchronizer synchronizer =
-        dbmsRegistry.get(dbmsType);
+DbmsSynchronizer synchronizer = dbmsFactory.get(dbmsType);
 
 synchronizer.sync(objectType, connection);
 ```
 
-이 구조에서 `DbmsRegistry`는 DBMS별 구현체를 조회하여 제공하는 Factory/Registry 역할을 담당한다.
+이 구조에서 `DbmsFactory`는 DBMS별 구현체를 조회하여 제공하는 역할을 담당한다.
 
 또한 사용처는 `OracleSynchronizer`, `MySqlSynchronizer`와 같은 구체 클래스를 직접 참조하지 않고 `DbmsSynchronizer` 인터페이스에 의존하도록 변경했다.
 
-이를 통해 신규 DBMS를 추가할 때 기존 동기화 API의 조건문을 수정할 필요가 없어졌으며, 해당 DBMS의 구현체를 추가하고 Registry에 등록되도록 구성하면 된다.
+이를 통해 신규 DBMS를 추가할 때 기존 동기화 API의 조건문을 수정할 필요가 없어졌으며, 해당 DBMS의 구현체를 추가하고 Factory에 등록되도록 구성하면 된다.
 
 ## 개선 결과
 
@@ -428,7 +369,7 @@ DBMS별로 중복되어 있던 JDBC 실행 및 자원 관리 코드를 공통 �
 
 기존에 동기화 API에서 반복적으로 사용하던 DBMS 비교 조건문을 제거했다.
 
-Spring Bean과 Map 기반 Registry를 도입하여 DBMS 타입에 맞는 Synchronizer를 조회하도록 변경했다.
+Spring Bean과 Map 기반 Factory를 도입하여 DBMS 타입에 맞는 Synchronizer를 조회하도록 변경했다.
 
 호출부는 구체적인 DBMS 구현체를 알 필요 없이 공통 인터페이스만 사용하도록 개선했다.
 
@@ -452,7 +393,7 @@ DBMS별 Synchronizer와 오브젝트별 Synchronizer를 분리하여 새로운 �
 - **AbstractObjectSynchronizer:** JDBC 실행 흐름 및 자원 관리
 - **ObjectSynchronizer 구현체:** DBMS 및 오브젝트별 비즈니스 로직
 - **DbmsSynchronizer 구현체:** DBMS별 지원 기능 구성 및 실행 위임
-- **DbmsRegistry:** DBMS 타입에 따른 구현체 조회
+- **DbmsFactory:** DBMS 타입에 따른 구현체 조회
 
 이를 통해 변경 사항의 성격에 따라 수정해야 하는 코드의 위치를 명확히 구분할 수 있게 되었다.
 
@@ -464,6 +405,6 @@ Template Method 패턴으로 JDBC 실행 흐름을 공통화하고, `try-with-re
 
 또한 DBMS별 Synchronizer가 지원하는 오브젝트 동기화 구현체를 조합하는 구조를 적용하여 DBMS와 오브젝트별 비즈니스 로직을 독립적으로 관리할 수 있도록 했다.
 
-마지막으로 Spring Bean과 Map 기반 Registry를 도입하여 DBMS 선택 로직을 중앙화하고 호출부가 구체 구현체에 의존하지 않도록 변경했다.
+마지막으로 Spring Bean과 Map 기반 Factory를 도입하여 DBMS 선택 로직을 중앙화하고 호출부가 구체 구현체에 의존하지 않도록 변경했다.
 
 결과적으로 **JDBC 자원 누수 위험을 줄이고, 공통 코드의 중복을 제거했으며, 신규 DBMS 및 오브젝트 추가에 따른 기존 코드의 변경 범위를 줄일 수 있는 구조로 개선했다.**

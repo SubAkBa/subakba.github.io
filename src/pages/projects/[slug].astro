@@ -8,6 +8,7 @@ import ServiceUserAnimation from '../../components/ServiceUserAnimation.astro';
 import MailGroupAnimation from '../../components/MailGroupAnimation.astro';
 import ParserFlowAnimation from '../../components/ParserFlowAnimation.astro';
 import '../../styles/parser-visuals.css';
+import '../../styles/sync-diagram.css';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -34,6 +35,7 @@ const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
 const isServiceUserStudy = project.id === 'service-user-query-optimization';
 const isCacheCaseStudy = project.id === 'caffeine-to-redis';
 const isMailGroupStudy = project.id === 'mail-group-batch-optimization';
+const isSyncStudy = project.id === 'dbms-object-synchronization';
 const isStageStudy = isCacheCaseStudy || isMailGroupStudy || project.id === 'open-api-load-testing';
 const tableOfContents = headings.filter(({ depth, slug }) =>
   depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isStageStudy,
@@ -59,7 +61,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}{project.id === 'antlr-ddl-parser' && <ParserFlowAnimation />}</article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-sync-study': isSyncStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}{project.id === 'antlr-ddl-parser' && <ParserFlowAnimation />}</article>
       {isQueryCaseStudy && (
         <div class="query-animation-source" aria-hidden="true">
           <QueryCaseAnimation caseNumber={1} />
@@ -114,7 +116,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
         heading.before(panel);
 
         let node: Element | null = heading;
-        while (node && (node === heading || node.tagName !== 'H2')) {
+        while (node && (node === heading || !/^H[1-6]$/.test(node.tagName) || node.tagName > heading.tagName)) {
           const next: Element | null = node.nextElementSibling;
           panel.append(node);
           node = next;
@@ -206,7 +208,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
         heading.before(section);
 
         let node: Element | null = heading;
-        while (node && (node === heading || node.tagName !== 'H2')) {
+        while (node && (node === heading || !/^H[1-6]$/.test(node.tagName) || node.tagName > heading.tagName)) {
           const next: Element | null = node.nextElementSibling;
           section.append(node);
           node = next;
@@ -315,6 +317,12 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
           observer.observe(animation);
         }
       });
+    }
+
+    const syncArticle = document.querySelector<HTMLElement>('.project-prose-sync-study');
+    if (syncArticle) {
+      setupTabs(syncArticle, ':scope > h3[id^="problem-"]', '기존 구조의 문제점', /^(Problem\s+\d+)\.\s*(.*)$/, true);
+      setupTabs(syncArticle, ':scope > h3[id^="pattern-"]', 'DBMS 동기화 디자인 패턴', /^(Pattern\s+\d+)\.\s*(.*)$/, true);
     }
 
     const stageArticle = document.querySelector<HTMLElement>('.project-prose-stage-study');

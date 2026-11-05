@@ -251,10 +251,6 @@ button { cursor: pointer; }
 .project-prose a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
 .project-prose :not(pre) > code { padding: 2px 5px; border: 1px solid var(--line); border-radius: 2px; background: var(--tint); color: var(--text); font-size: .86em; overflow-wrap: anywhere; }
 .project-prose img { max-width: 100%; height: auto; border: 1px solid var(--line); }
-.project-prose .project-diagram { margin: 28px 0 34px; }
-.project-prose .project-diagram a { display: block; }
-.project-prose .project-diagram img { display: block; width: 100%; }
-.project-prose .project-diagram figcaption { margin-top: 8px; color: var(--subtle); font-size: 12px; line-height: 1.6; }
 .project-prose table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 20px 0 28px; font-size: 13px; }
 .project-prose th, .project-prose td { padding: 8px 11px; border: 1px solid var(--line); text-align: left; }
 .project-prose th { background: var(--tint); color: var(--text); }
