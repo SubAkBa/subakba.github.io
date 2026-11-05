@@ -46,7 +46,6 @@
 .project-prose-sync-study .project-stage-tabs:has(> :nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .project-prose-sync-study .project-stage-tabs:has(> [id^="problem-"]) { position: static; }
 .project-prose-sync-study .project-stage-tab { overflow-wrap: anywhere; }
-.project-prose-sync-study .project-stage-panel > h3:first-child { margin-top: 0; }
 .project-prose-sync-study :is(h3, h4) { scroll-margin-top: 110px; }
 
 @media (max-width: 550px) {
