@@ -81,8 +81,6 @@ draft: true
 
 실제 공개할 PDF를 `public/resume/resume.pdf`에 추가합니다. 파일이 없으면 헤더와 Hero에 **준비 중**으로 표시되며 빌드는 정상적으로 완료됩니다. 파일을 추가하고 다시 빌드하면 이력서 링크가 활성화되어 새 탭에서 PDF를 엽니다. 이 UI는 `src/components/ResumeLink.astro`에 모여 있습니다.
 
-프로필 사진은 선택 사항입니다. `public/images/profile.webp`를 추가하면 Hero의 프로필 영역에 자동으로 표시됩니다. 이미지가 없어도 레이아웃은 완성된 상태로 보입니다. 이미지 사용 시 표시 크기에 맞춰 압축하고 적절한 얼굴 중심 크롭을 권장합니다.
-
 ## Deployment
 
 `main` 브랜치로 변경 사항을 푸시하면 `.github/workflows/deploy.yml`이 공식 Astro GitHub Action으로 빌드하고 GitHub Pages에 배포합니다. 저장소 `subakba/subakba.github.io`의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 설정해야 합니다.
