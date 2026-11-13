@@ -22,7 +22,7 @@ draft: false
 
 담당 시스템에서는 MySQL, Oracle, PostgreSQL, MSSQL, Cubrid 및 사내 DBMS 등 여러 데이터베이스의 오브젝트 정보를 동기화하는 기능을 제공하고 있었다.
 
-동기화 대상에는 Table, Column, Index, Sequence, View, Synonym 등 다양한 오브젝트가 포함되었으며, DBMS마다 지원하는 오브젝트 종류와 메타데이터 조회 방식이 달랐다.
+동기화 대상에는 Table, View, Serial/Sequence, Stored Procedure(SP), Function, Trigger, Synonym 등이 포함되었으며, DBMS마다 지원하는 오브젝트 종류와 메타데이터 조회 방식이 달랐다. Column과 Index는 별도 동기화 대상이 아니라 Table 동기화에 포함되었다.
 
 기존에는 단일 Processor 안에 DBMS별 동기화 메서드를 두어 이러한 차이를 처리하고 있었다.
 
@@ -105,7 +105,7 @@ if ("ORACLE".equals(dbmsCode)) {
 
 | 구분 | 적용 방식 |
 |---|---|
-| **Template Method 패턴** | 공통 JDBC 실행 순서를 추상 클래스에 정의하고, DBMS별 SQL 생성과 메타데이터 설정은 하위 구현체로 분리했다. `Statement`와 `ResultSet`은 `try-with-resources`로 해제한다. |
+| **Template Method 패턴** | 공통 JDBC 실행 순서를 추상 클래스에 정의하고, DBMS별 SQL 생성과 메타데이터 설정은 하위 구현체로 분리했다. 대상 DB의 `Connection`, `Statement`, `ResultSet`은 `try-with-resources`로 해제한다. |
 | **Strategy 패턴** | DBMS마다 다른 동기화 구현체를 공통 인터페이스로 선택하고 실행한다. |
 | **Factory 역할과 Registry 방식** | DBMS별 Synchronizer를 Spring Bean으로 등록해 DBMS 타입을 키로 Map에 보관하고, `DbmsFactory`가 요청 타입으로 구현체를 찾아 기존 `if-else` 분기를 제거한다. |
 | **Object Composition** | 각 DBMS Synchronizer가 지원하는 오브젝트 동기화 Bean만 조합해 필요한 기능을 제공한다. |
@@ -129,16 +129,16 @@ if ("ORACLE".equals(dbmsCode)) {
   </div>
   <div class="sync-diagram-down"><span aria-hidden="true">↓</span><small>DBMS별 클래스가 DbmsSynchronizer를 구현하고, 오브젝트별 Spring Bean을 생성자로 주입받음</small></div>
   <div class="sync-diagram-dbms" aria-label="DBMS별 오브젝트 동기화 구현 예시">
-    <div class="sync-diagram-dbms-card"><small>ORACLE</small><strong>OracleSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>OracleTableSynchronizer</strong></li><li><span>INDEX</span><strong>OracleIndexSynchronizer</strong></li><li><span>SEQUENCE</span><strong>OracleSequenceSynchronizer</strong></li></ul></div>
-    <div class="sync-diagram-dbms-card"><small>MYSQL</small><strong>MySqlSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>MySqlTableSynchronizer</strong></li><li><span>COLUMN</span><strong>MySqlColumnSynchronizer</strong></li><li><span>INDEX</span><strong>MySqlIndexSynchronizer</strong></li></ul></div>
-    <div class="sync-diagram-dbms-card"><small>POSTGRESQL</small><strong>PostgreSqlSynchronizer</strong><span class="sync-diagram-map">ObjectType으로 구현체 선택</span><ul><li><span>TABLE</span><strong>PostgreSqlTableSynchronizer</strong></li><li><span>SEQUENCE</span><strong>PostgreSqlSequenceSynchronizer</strong></li></ul></div>
+    <div class="sync-diagram-dbms-card"><small>ORACLE</small><strong>OracleSynchronizer</strong><span class="sync-diagram-map">지원 대상 중 일부 예시</span><ul><li><span>TABLE</span><strong>OracleTableSynchronizer</strong></li><li><span>VIEW</span><strong>OracleViewSynchronizer</strong></li><li><span>SEQUENCE</span><strong>OracleSequenceSynchronizer</strong></li></ul></div>
+    <div class="sync-diagram-dbms-card"><small>MYSQL</small><strong>MySqlSynchronizer</strong><span class="sync-diagram-map">지원 대상 중 일부 예시</span><ul><li><span>TABLE</span><strong>MySqlTableSynchronizer</strong></li><li><span>VIEW</span><strong>MySqlViewSynchronizer</strong></li><li><span>FUNCTION</span><strong>MySqlFunctionSynchronizer</strong></li></ul></div>
+    <div class="sync-diagram-dbms-card"><small>POSTGRESQL</small><strong>PostgreSqlSynchronizer</strong><span class="sync-diagram-map">지원 대상 중 일부 예시</span><ul><li><span>TABLE</span><strong>PostgreSqlTableSynchronizer</strong></li><li><span>VIEW</span><strong>PostgreSqlViewSynchronizer</strong></li><li><span>SERIAL</span><strong>PostgreSqlSerialSynchronizer</strong></li></ul></div>
   </div>
   <div class="sync-diagram-down"><span aria-hidden="true">↓</span><small>오브젝트 구현체가 AbstractObjectSynchronizer 상속</small></div>
   <div class="sync-diagram-template">
     <div><small>SHARED TEMPLATE METHOD</small><strong>AbstractObjectSynchronizer</strong><span>ObjectSynchronizer 구현 · sync()</span></div>
     <ol aria-label="공통 JDBC 실행 순서"><li>getQuery()로 조회 SQL 생성</li><li>Statement로 SQL 실행</li><li>syncObject(ResultSet) 호출</li><li>JDBC 자원 해제</li></ol>
   </div>
-  <p class="sync-diagram-note">각 DBMS는 지원하는 오브젝트 동기화 구현체만 조합한다. OracleTableSynchronizer와 MySqlColumnSynchronizer 같은 구체 클래스는 AbstractObjectSynchronizer를 상속해 공통 실행 흐름을 재사용한다.</p>
+  <p class="sync-diagram-note">도식은 지원 대상 중 일부를 보여주는 일반화 예시다. 각 DBMS는 지원하는 오브젝트 동기화 구현체만 조합한다. OracleTableSynchronizer와 MySqlViewSynchronizer 같은 구체 클래스는 AbstractObjectSynchronizer를 상속해 공통 실행 흐름을 재사용한다.</p>
 </figure>
 
 #### 실행 예시 · Oracle TABLE 동기화
@@ -182,74 +182,59 @@ public abstract class AbstractObjectSynchronizer implements ObjectSynchronizer {
 }
 ```
 
-Oracle TABLE과 MySQL COLUMN이라는 서로 다른 DBMS·오브젝트 조합으로 `getConnection()`, `getQuery()`, `syncObject(ResultSet)`의 구현을 보여준다. 아래 두 클래스는 **공개용 일반화 예시**이며, `@Qualifier`의 Bean 이름과 `DataSource` 구성은 실제 내부 설정이 아닌 설명을 위한 가정이다.
+일부 DBMS 구현에서는 관리 계정 ID와 변환된 비밀번호를 `Properties`에 담고, 내부 규칙으로 조합한 JDBC URL을 `DriverManager.getConnection()`에 전달했다. 아래는 실제 메서드명과 내부 값을 생략한 **공개용 일반화 예시**다. `encodedPassword`는 변환을 마친 값이다.
 
 ```java
-@Component
-public class OracleTableSynchronizer extends AbstractObjectSynchronizer {
-    private final DataSource targetDataSource;
+private Connection openTargetConnection(String jdbcUrl, String adminUserId, String encodedPassword) throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty("user", adminUserId);
+    properties.setProperty("password", encodedPassword);
+    return DriverManager.getConnection(jdbcUrl, properties);
+}
+```
 
-    public OracleTableSynchronizer(@Qualifier("exampleOracleDataSource") DataSource targetDataSource) {
-        this.targetDataSource = targetDataSource;
-    }
+`OracleTableSynchronizer`와 `MySqlViewSynchronizer`는 각각 `AbstractObjectSynchronizer`를 상속하는 오브젝트별 구체 클래스다. Oracle TABLE과 MySQL VIEW를 예로 `getQuery()`와 `syncObject(ResultSet)`의 차이를 보여준다. 아래는 각 클래스 본문의 **핵심 메서드 발췌**다. 실제 `getConnection()` 구현과 Bean 등록 방식은 생략했으며, 위 `DriverManager` 흐름을 두 DBMS의 연결 방식으로 단정하지 않는다.
 
-    @Override
-    protected Connection getConnection() throws SQLException {
-        return targetDataSource.getConnection();
-    }
+```java
+// OracleTableSynchronizer의 메서드 발췌
+@Override
+protected String getQuery() {
+    return "SELECT OWNER, TABLE_NAME FROM ALL_TABLES";
+}
 
-    @Override
-    protected String getQuery() {
-        return "SELECT OWNER, TABLE_NAME FROM ALL_TABLES";
-    }
-
-    @Override
-    protected void syncObject(ResultSet rs) throws SQLException {
-        while (rs.next()) {
-            String owner = rs.getString("OWNER");
-            String tableName = rs.getString("TABLE_NAME");
-            // 조회 값을 내부 메타데이터에 반영하는 실제 로직은 생략
-        }
+@Override
+protected void syncObject(ResultSet rs) throws SQLException {
+    while (rs.next()) {
+        String owner = rs.getString("OWNER");
+        String tableName = rs.getString("TABLE_NAME");
+        // 조회 값을 내부 메타데이터에 반영하는 실제 로직은 생략
     }
 }
 ```
 
 ```java
-@Component
-public class MySqlColumnSynchronizer extends AbstractObjectSynchronizer {
-    private final DataSource targetDataSource;
+// MySqlViewSynchronizer의 메서드 발췌
+@Override
+protected String getQuery() {
+    return "SELECT TABLE_SCHEMA, TABLE_NAME, VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS";
+}
 
-    public MySqlColumnSynchronizer(@Qualifier("exampleMySqlDataSource") DataSource targetDataSource) {
-        this.targetDataSource = targetDataSource;
-    }
-
-    @Override
-    protected Connection getConnection() throws SQLException {
-        return targetDataSource.getConnection();
-    }
-
-    @Override
-    protected String getQuery() {
-        return "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS";
-    }
-
-    @Override
-    protected void syncObject(ResultSet rs) throws SQLException {
-        while (rs.next()) {
-            String schema = rs.getString("TABLE_SCHEMA");
-            String tableName = rs.getString("TABLE_NAME");
-            String columnName = rs.getString("COLUMN_NAME");
-            // 조회 값을 내부 메타데이터에 반영하는 실제 로직은 생략
-        }
+@Override
+protected void syncObject(ResultSet rs) throws SQLException {
+    while (rs.next()) {
+        String schema = rs.getString("TABLE_SCHEMA");
+        String viewName = rs.getString("TABLE_NAME");
+        String definition = rs.getString("VIEW_DEFINITION");
+        // 조회 값을 내부 메타데이터에 반영하는 실제 로직은 생략
     }
 }
 ```
 
-예시 SQL에는 공개 카탈로그의 컬럼만 사용했다. 실제 동기화 범위와 조회 조건은 이 예시에서 다루지 않는다. ([Oracle `ALL_TABLES`](https://docs.oracle.com/en/database/oracle/oracle-database/26/refrn/ALL_TABLES.html), [MySQL `INFORMATION_SCHEMA.COLUMNS`](https://dev.mysql.com/doc/refman/8.4/en/information-schema-columns-table.html))
+예시 SQL에는 공개 카탈로그의 컬럼만 사용했다. Oracle TABLE의 Column·Index 조회와 반영, 실제 동기화 범위 및 조회 조건은 이 발췌에서 다루지 않는다. ([Oracle `ALL_TABLES`](https://docs.oracle.com/en/database/oracle/oracle-database/26/refrn/ALL_TABLES.html), [MySQL `INFORMATION_SCHEMA.VIEWS`](https://dev.mysql.com/doc/refman/8.4/en/information-schema-views-table.html))
 
 추상 클래스의 `try-with-resources`는 `ResultSet`, `Statement`, 동기화 대상 DB의 `Connection`을 해제한다. 이 연결의 종료와 Spring 트랜잭션의 롤백은 서로 다른 연결에 관한 처리다.
 
-`OracleTableSynchronizer`와 `MySqlColumnSynchronizer` 같은 오브젝트별 구체 클래스는 `AbstractObjectSynchronizer`를 상속한다. 공통 `sync()`를 재사용하고, 각 클래스에서 DBMS·오브젝트에 맞는 SQL 생성과 결과 처리를 구현한다.
+`OracleTableSynchronizer`와 `MySqlViewSynchronizer` 같은 오브젝트별 구체 클래스는 `AbstractObjectSynchronizer`를 상속한다. 공통 `sync()`를 재사용하고, 각 클래스에서 DBMS·오브젝트에 맞는 SQL 생성과 결과 처리를 구현한다.
 
 이 구조에서 `sync()`는 실행 흐름을 정의하는 Template Method 역할을 한다.
 
@@ -315,7 +300,7 @@ public interface DbmsSynchronizer {
 }
 ```
 
-Oracle의 경우 다음과 같이 구성할 수 있다.
+Oracle의 경우 지원 대상 중 Table, View, Sequence 세 가지만 발췌하면 다음과 같다. 클래스명과 구성 방식은 공개용 일반화 예시다.
 
 ```java
 @Component
@@ -324,12 +309,13 @@ public class OracleSynchronizer implements DbmsSynchronizer {
     private final Map<ObjectType, ObjectSynchronizer> synchronizers;
 
     public OracleSynchronizer(OracleTableSynchronizer tableSynchronizer,
-                              OracleIndexSynchronizer indexSynchronizer,
+                              OracleViewSynchronizer viewSynchronizer,
                               OracleSequenceSynchronizer sequenceSynchronizer) {
         synchronizers = new EnumMap<>(ObjectType.class);
         synchronizers.put(ObjectType.TABLE, tableSynchronizer);
-        synchronizers.put(ObjectType.INDEX, indexSynchronizer);
+        synchronizers.put(ObjectType.VIEW, viewSynchronizer);
         synchronizers.put(ObjectType.SEQUENCE, sequenceSynchronizer);
+        // Function, SP, Trigger, Synonym 등의 주입·등록은 발췌에서 생략
     }
 
     @Override
@@ -345,24 +331,26 @@ public class OracleSynchronizer implements DbmsSynchronizer {
 }
 ```
 
-*위 코드는 생성자 주입과 지원 오브젝트의 위임 경로를 보여주는 일반화 예시다. `OracleTableSynchronizer`, `OracleIndexSynchronizer`, `OracleSequenceSynchronizer`는 각각 Spring Bean으로 등록된 구현체다. 이 예시에서 미지원 타입은 `ObjectSynchronizer.sync()` 호출 전에 예외를 던지므로 동기화 대상 DB의 `Connection`도 획득하지 않는다. 실제 예외 변환과 Spring 트랜잭션 처리는 생략했다.*
+*위 코드는 생성자 주입과 위임 경로를 보여주는 일부 발췌 예시다. 세 오브젝트 구현체는 각각 Spring Bean으로 등록된 구현체를 가리키며, 실제 Oracle은 표에 적힌 나머지 오브젝트도 지원한다. 미지원 타입은 완성된 Map에서 조회되지 않아 `ObjectSynchronizer.sync()` 전에 예외가 발생하며, 대상 DB 연결도 획득하지 않는다. 실제 예외 변환과 Spring 트랜잭션 처리는 생략했다.*
 
 이 구조에서는 `OracleSynchronizer`가 모든 오브젝트 동기화 로직을 직접 구현하지 않는다.
 
-대신 Table, Index, Sequence 등 각 오브젝트에 해당하는 Synchronizer를 보유하고, 요청한 오브젝트 타입에 따라 적절한 구현체에 작업을 위임한다.
+대신 Table, View, Sequence 등 각 오브젝트에 해당하는 Synchronizer를 보유하고, 요청한 오브젝트 타입에 따라 적절한 구현체에 작업을 위임한다.
 
 이러한 방식에는 **필요한 기능의 구현체를 보유하고 조합하는 Object Composition 원칙**을 적용했다.
 
 이 시스템의 동기화 기능에서는 DBMS마다 지원하는 오브젝트가 달랐다.
 
-| DBMS | 공통 지원 | 추가 지원 오브젝트 |
-|---|---|---|
-| MySQL | Table, Column, Index | View |
-| Oracle | Table, Column, Index | Serial/Sequence, View, SP, Function, Trigger, Synonym |
-| PostgreSQL | Table, Column, Index | Serial, SP, Trigger |
-| MSSQL | Table, Column, Index | Trigger, Synonym |
-| 사내 DBMS | Table, Column, Index | View |
-| Cubrid | Table, Column, Index | Serial |
+| DBMS | 이 시스템에서 동기화한 상위 오브젝트 |
+|---|---|
+| Oracle | Table, View, Serial/Sequence, Function, SP, Trigger, Synonym |
+| MySQL | Table, View, SP, Function, Trigger |
+| MSSQL | Table, View, SP, Function |
+| Cubrid | Table, View, Serial |
+| 사내 DBMS | Table |
+| PostgreSQL | Table, View, Serial, SP, Function, Trigger |
+
+Column과 Index 메타데이터는 각 DBMS의 Table 동기화에 포함되며, 독립적인 `ObjectType`으로 나열하지 않았다.
 
 각 DBMS Synchronizer는 실제 지원하는 오브젝트 동기화 구현체만 보유했다. 지원하지 않는 오브젝트의 구현체를 구성할 필요가 없어졌다.
 
