@@ -10,7 +10,7 @@ skills:
   - JDBC
   - Design Patterns
 featured: true
-order: 8
+order: 3
 draft: false
 ---
 
