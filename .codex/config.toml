@@ -1,0 +1,4 @@
+[agents]
+enabled = true
+# Writer 작업 후 세 리뷰어를 동시에 실행할 수 있는 수.
+max_concurrent_threads_per_session = 3
