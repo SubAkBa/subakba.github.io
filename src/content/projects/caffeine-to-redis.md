@@ -11,7 +11,7 @@ skills:
   - Redis
   - Lettuce
 featured: true
-order: 2
+order: 3
 draft: false
 ---
 

@@ -34,8 +34,11 @@ import SectionHeading from './SectionHeading.astro';
           <span class="about-item-number" aria-hidden="true">03</span>
           <div>
             <h3>문제의 원인을 파고드는 과정을 즐깁니다.</h3>
-            <p>운영 중 발생한 캐시 불일치와 Redis Cluster 장애를 로그·캐시 동작·로컬 장애 재현으로 분석하고 대응 방식을 검증했습니다.</p>
-            <a href="/projects/caffeine-to-redis">캐시·장애 대응 사례 <span aria-hidden="true">↗</span></a>
+            <p>캐시 불일치와 Redis Cluster 장애를 로그·재현으로 분석했습니다. ACL 동기화 배치에서는 첫 청크 OOM과 선행 삭제가 ACL 0건으로 이어진 원인을 찾아, 커서 스트리밍과 UPSERT 후 미수집 행 정리로 구조를 바꿨습니다.</p>
+            <div class="about-item-links">
+              <a href="/projects/caffeine-to-redis">캐시·장애 대응 사례 <span aria-hidden="true">↗</span></a>
+              <a href="/projects/mysql-acl-sync-batch-improvement">ACL 배치 개선 사례 <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
         </li>
         <li>

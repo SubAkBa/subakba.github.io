@@ -11,7 +11,7 @@ skills:
   - MyBatis
   - jOOQ
 featured: true
-order: 5
+order: 6
 draft: false
 ---
 

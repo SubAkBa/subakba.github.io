@@ -1,0 +1,66 @@
+.acl-animation-source { display: none; }
+.acl-flow-animation { margin: 22px 0 32px; padding: 20px; border: 1px solid var(--line); background: var(--bg); color: var(--text); line-height: 1.5; }
+.acl-flow-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.acl-flow-eyebrow { margin: 0 0 4px !important; color: var(--accent-strong); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.project-prose .acl-flow-heading h3 { margin: 0; padding: 0; border: 0; font-size: 18px; line-height: 1.4; }
+.acl-flow-counter { display: flex; flex: none; flex-direction: column; align-items: end; gap: 3px; color: var(--subtle); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.acl-flow-counter small { max-width: 130px; color: var(--text); font-size: 10px; font-weight: 750; line-height: 1.25; }
+.acl-flow-branch { display: flex; align-items: center; gap: 6px; margin: 0 0 13px; padding: 8px; border: 1px solid var(--line); background: var(--surface); }
+.acl-flow-branch span { margin-right: 4px; color: var(--subtle); font-size: 10px; font-weight: 750; }
+.acl-flow-branch button { padding: 6px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+.acl-flow-branch button[aria-pressed="true"] { border-color: var(--accent); background: var(--tint); color: var(--text); }
+.acl-flow-diagram { display: grid; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr); align-items: stretch; gap: 7px; }
+.acl-flow-box { min-width: 0; min-height: 154px; padding: 12px; border: 1px solid var(--line); background: var(--surface); transition: border-color .25s ease, background .25s ease; }
+.acl-flow-box.is-alert { border-color: var(--query-before); background: color-mix(in srgb, var(--query-before) 7%, var(--surface)); }
+.acl-flow-box-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.acl-flow-box-head span, .acl-flow-source-box > span { font-size: 11px; font-weight: 850; }
+.acl-flow-box-head strong { color: var(--accent-strong); font-size: 10px; font-weight: 700; text-align: right; }
+.acl-flow-box.is-alert .acl-flow-box-head strong { color: var(--query-before); }
+.acl-flow-blocks, .acl-flow-source { display: flex; flex-wrap: wrap; align-content: start; gap: 6px; min-height: 56px; padding-top: 12px; }
+.acl-flow-block { display: inline-flex; min-width: 43px; min-height: 34px; align-items: center; justify-content: center; padding: 6px 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 11px; font-weight: 750; text-align: center; transition: border-color .25s ease, background .25s ease, transform .25s ease; }
+.acl-flow-block.is-current { border-color: var(--accent); background: var(--tint); transform: translateY(-2px); }
+.acl-flow-block.is-extended { border-color: #d5a742; box-shadow: inset 0 -3px #d5a742; }
+.acl-flow-block.is-new { border-color: #56a778; box-shadow: inset 0 -3px #56a778; }
+.acl-flow-block.is-stale { border-style: dashed; opacity: .55; }
+.acl-flow-block.is-problem { border-color: var(--query-before); box-shadow: inset 0 -3px var(--query-before); }
+.acl-flow-block.is-entering { animation: acl-block-enter .42s ease-out both; }
+.acl-flow-empty { color: var(--subtle); font-size: 10px; align-self: center; }
+.acl-flow-box.is-alert .acl-flow-empty { color: var(--query-before); font-weight: 800; }
+.acl-flow-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--accent-strong); }
+.acl-flow-arrow strong { font-size: 22px; line-height: 1; }
+.acl-flow-arrow small { color: var(--subtle); font-size: 9px; font-weight: 750; line-height: 1.25; text-align: center; word-break: keep-all; }
+.acl-flow-side { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.acl-flow-source-box { min-height: 72px; padding: 9px 12px; border: 1px dashed var(--line); background: var(--surface); }
+.acl-flow-source-box .acl-flow-source { min-height: 38px; padding-top: 6px; }
+.acl-flow-source .acl-flow-block { min-height: 29px; font-size: 10px; }
+.acl-flow-chunk-label { margin-top: 4px; color: var(--subtle); font-size: 10px; font-weight: 800; }
+.acl-flow-chunk-label + .acl-flow-blocks { min-height: 40px; padding-top: 6px; }
+.acl-flow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 15px 0 11px; }
+.acl-flow-steps button { display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 7px 6px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 10px; font-weight: 700; word-break: keep-all; cursor: pointer; }
+.acl-flow-steps button span { color: var(--accent-strong); font-size: 9px; font-weight: 850; }
+.acl-flow-steps button[aria-current="step"] { border-color: var(--accent); background: var(--tint); color: var(--text); }
+.acl-flow-caption { min-height: 56px; margin: 0 0 13px !important; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--surface); font-size: 12px; }
+.acl-flow-controls { display: flex; align-items: center; gap: 12px; }
+.acl-flow-buttons { display: flex; gap: 5px; flex: none; }
+.acl-flow-buttons button { min-width: 38px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+.acl-flow-buttons button:hover, .acl-flow-steps button:hover { border-color: var(--accent); }
+.acl-flow-buttons button:disabled { opacity: .4; cursor: default; }
+.acl-flow-progress { flex: 1; height: 4px; background: var(--line); }
+.acl-flow-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
+.acl-flow-note { margin: 10px 0 0 !important; color: var(--subtle); font-size: 10px; }
+.acl-flow-animation :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.acl-flow-ghost { position: fixed; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 6px 8px; border: 1px solid var(--accent); background: var(--tint); color: var(--text); font-size: 11px; font-weight: 800; pointer-events: none; }
+@keyframes acl-block-enter { from { opacity: .25; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 640px) {
+  .acl-flow-animation { padding: 13px; }
+  .acl-flow-diagram { grid-template-columns: 1fr; }
+  .acl-flow-arrow { min-height: 25px; }
+  .acl-flow-arrow strong { transform: rotate(90deg); }
+  .acl-flow-box { min-height: 120px; }
+  .acl-flow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .acl-flow-branch { flex-wrap: wrap; }
+  .acl-flow-caption { min-height: 88px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acl-flow-animation *, .acl-flow-animation *::before, .acl-flow-animation *::after { animation: none !important; transition: none !important; }
+}

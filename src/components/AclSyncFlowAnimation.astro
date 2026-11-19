@@ -1,0 +1,403 @@
+---
+interface Props { mode: 'before' | 'after' }
+
+interface FlowFrame {
+  label: string;
+  caption: string;
+  target: string[];
+  backup?: string[];
+  source?: string[];
+  chunk?: string[];
+  emphasis?: string[];
+  stale?: string[];
+  problem?: string[];
+  alert?: boolean;
+  targetNote: string;
+  sideNote: string;
+  readerNote?: string;
+  flow: string;
+  direction?: 'left' | 'right' | 'none';
+  move?: { from: 'target' | 'backup' | 'source' | 'chunk'; to: 'target' | 'backup' | 'source' | 'chunk'; fromValue: string; toValue: string }[];
+}
+
+const { mode } = Astro.props;
+const existing = ['A·서버1', 'B·서버1', 'D·서버1'];
+const oldBackup = ['A·서버1', 'B·서버1'];
+const sourceRows = ['원본 A', '원본 B', '원본 C'];
+const expanded = ['A·서버1', 'A·서버2', 'B·서버1', 'C·서버1'];
+
+const beforeCommon: FlowFrame[] = [
+  {
+    label: '기존 상태', caption: '대상에는 전날 ACL이, 백업에는 더 이전 스냅샷이 남아 있습니다. B·서버1은 화면에서 사용 일시가 연장된 행입니다.',
+    target: existing, backup: oldBackup, emphasis: ['target-B·서버1'], targetNote: '기존 ACL 3건 · 예시', sideNote: '이전 스냅샷', readerNote: '읽기 전', flow: '기존 데이터', direction: 'none',
+  },
+  {
+    label: '백업 초기화', caption: '백업 테이블의 이전 스냅샷을 비웁니다. 대상 ACL은 아직 그대로 남아 있습니다.',
+    target: existing, backup: [], targetNote: '기존 ACL 유지', sideNote: '이전 백업 삭제', readerNote: '읽기 전', flow: '백업 초기화', direction: 'none',
+  },
+  {
+    label: '백업 복사', caption: '대상 ACL을 백업으로 복사합니다. 연장된 B·서버1의 값도 남깁니다. 백업은 장애 복구용 자동 복원 데이터가 아닙니다.',
+    target: existing, backup: existing, emphasis: ['target-B·서버1', 'backup-B·서버1'], targetNote: '기존 ACL 유지', sideNote: '연장 값 포함 복사', readerNote: '읽기 전', flow: '대상 → 백업', direction: 'right', move: existing.map((value) => ({ from: 'target', to: 'backup', fromValue: value, toValue: value })),
+  },
+  {
+    label: '대상 전체 삭제', caption: '해당 DBMS의 대상 ACL을 먼저 전부 삭제합니다. 이때부터 적재가 끝나기 전까지 조회할 ACL이 없습니다.',
+    target: [], backup: existing, alert: true, targetNote: '0건 · 빈 구간', sideNote: '백업에 복사본 유지', readerNote: '읽기 전', flow: '대상 삭제', direction: 'none',
+  },
+  {
+    label: '원본 전체 조회', caption: '원본 접속 이력 전체를 List로 읽습니다. 예시에서는 세 행만 보이지만 실제 장애 당시 원본은 약 600만 건이었습니다.',
+    target: [], backup: existing, source: sourceRows, alert: true, targetNote: '0건 · 빈 구간', sideNote: '백업 유지', readerNote: '원본 전체 List', flow: '원본 → 힙', direction: 'none',
+  },
+  {
+    label: '전체 펼치기', caption: '원본 A 한 행이 서버 두 곳에 매핑되어 A·서버1/A·서버2가 됩니다. 펼친 ACL 전체도 별도 List로 보유했고, 실제 규모는 약 1,000만 건이었습니다.',
+    target: [], backup: existing, source: expanded, emphasis: ['source-0', 'source-1'], alert: true, targetNote: '0건 · 빈 구간', sideNote: '백업 유지', readerNote: '펼친 ACL 전체 List', flow: '원본 → ACL fan-out', direction: 'none',
+  },
+];
+
+const beforeIncident: FlowFrame[] = [
+  {
+    label: '첫 청크 OOM', caption: '실제 장애에서는 첫 청크가 READ 10,000 / WRITE 0에서 OOM으로 멈췄습니다. 앞서 삭제한 ACL에는 한 건도 적재되지 않았습니다.',
+    target: [], backup: existing, source: expanded, alert: true, targetNote: '0건 · WRITE 0', sideNote: '복사본은 남아 있음', readerNote: '전체 List 보유 · OOM', flow: '첫 청크 실패', direction: 'none',
+  },
+  {
+    label: '장애 결과', caption: '해당 DBMS의 ACL은 0건으로 남았습니다. 백업 데이터를 대상 테이블로 자동 복원하는 로직은 없었고, 별도 서버에서 배치를 다시 실행해 복구했습니다.',
+    target: [], backup: existing, alert: true, targetNote: '0건 · 복구 전까지 누락', sideNote: '자동 복원 없음', readerNote: 'Step 실패', flow: '장애 종료', direction: 'none',
+  },
+];
+
+const beforeNormal: FlowFrame[] = [
+  {
+    label: '첫 청크 적재', caption: '정상 실행 경로에서는 펼친 ACL을 청크로 대상에 쓰기 시작합니다. 이 예시 단계는 실제 OOM이 발생한 실행과 별개의 경로입니다.',
+    target: ['A·서버1', 'A·서버2'], backup: existing, source: expanded, emphasis: ['target-A·서버1', 'target-A·서버2'], alert: true, targetNote: '일부만 적재 · 예시', sideNote: '백업 유지', readerNote: '펼친 ACL 전체 List', flow: 'List → 청크 적재', direction: 'left', move: expanded.slice(0, 2).map((value) => ({ from: 'source', to: 'target', fromValue: value, toValue: value })),
+  },
+  {
+    label: '후속 청크', caption: '나머지 청크를 계속 적재합니다. 기존 B·서버1은 재삽입 단계에서 연장 전 값이 들어오고, D·서버1은 오늘 수집되지 않아 사라집니다.',
+    target: expanded, backup: existing, source: expanded, emphasis: ['target-B·서버1', 'target-C·서버1'], targetNote: '원본 기준 재적재', sideNote: '연장된 B 값 보관', readerNote: '펼친 ACL 전체 List', flow: 'List → 청크 적재', direction: 'left',
+  },
+  {
+    label: '백업 값 보정', caption: '재적재를 마친 뒤 백업의 B·서버1 사용 일시가 더 최신이면 이를 되살립니다. 백업에 없는 신규 C·서버1은 기존 보정 서브쿼리 때문에 일부 컬럼이 NULL로 덮이는 문제가 있었습니다.',
+    target: expanded, backup: existing, emphasis: ['backup-B·서버1', 'target-B·서버1'], problem: ['target-C·서버1'], targetNote: 'B 연장 값 복원 / C 일부 값 NULL', sideNote: 'B의 더 최신 값 참조', readerNote: '처리 종료', flow: '백업 → 값 보정', direction: 'left', move: [{ from: 'backup', to: 'target', fromValue: 'B·서버1', toValue: 'B·서버1' }],
+  },
+];
+
+const after: FlowFrame[] = [
+  {
+    label: 'T·매핑 준비', caption: 'Job 시작 시 기준 시각 T를 한 번 정하고 서버 매핑을 준비합니다. 기존 ACL은 지우지 않아 계속 조회할 수 있습니다.',
+    target: existing, source: ['A → 서버1', 'A → 서버2'], emphasis: ['target-B·서버1'], targetNote: '기존 ACL 조회 가능', sideNote: '기준 시각 T 공유', flow: 'Job 시작', direction: 'none',
+  },
+  {
+    label: '커서 열기', caption: 'ItemStream의 open()에서 원본 커서를 엽니다. 이후 여러 청크에 걸쳐 같은 Reader에서 순서대로 읽습니다.',
+    target: existing, targetNote: '기존 ACL 유지', sideNote: 'open() · 원본 커서', flow: '커서 시작', direction: 'none',
+  },
+  {
+    label: '원본 A 읽기', caption: '원본 A 한 행을 커서에서 읽습니다. 이 시점에도 대상 ACL은 그대로 남아 있습니다.',
+    target: existing, source: ['원본 A'], emphasis: ['source-0'], targetNote: '기존 ACL 유지', sideNote: '원본 A 한 행', flow: '커서 → 현재 행', direction: 'none',
+  },
+  {
+    label: '서버별 펼치기', caption: '서버 매핑 두 개에 따라 원본 A가 ACL A·서버1과 A·서버2로 펼쳐집니다. Reader는 현재 행의 결과를 작은 버퍼에서 하나씩 반환합니다.',
+    target: existing, source: ['원본 A'], chunk: ['A·서버1', 'A·서버2'], emphasis: ['source-0', 'chunk-0', 'chunk-1'], targetNote: '기존 ACL 유지', sideNote: '원본 1행 → ACL 2건', flow: '현재 행 → ACL 버퍼', direction: 'none', move: ['A·서버1', 'A·서버2'].map((value) => ({ from: 'source', to: 'chunk', fromValue: '원본 A', toValue: value })),
+  },
+  {
+    label: '청크에 누적', caption: '다음 원본 행들도 읽어 예시 청크에 ACL을 모읍니다. 서버 매핑 정보, 현재 행에서 펼친 결과와 청크는 메모리에 남지만 전체 원본·ACL List는 보유하지 않습니다.',
+    target: existing, source: sourceRows, chunk: expanded, emphasis: ['chunk-0', 'chunk-1', 'chunk-2', 'chunk-3'], targetNote: '아직 기존 ACL 유지', sideNote: '청크 버퍼 · 예시 4건', flow: '버퍼 → 청크', direction: 'none',
+  },
+  {
+    label: 'UPSERT·커밋', caption: '예시 청크를 UPSERT하고 커밋합니다. A·서버2와 C·서버1은 신규, B·서버1은 더 최신인 연장 값이 유지됩니다. 기존 행의 created_at도 유지합니다.',
+    target: [...existing, 'A·서버2', 'C·서버1'], source: sourceRows, chunk: expanded, emphasis: ['target-A·서버1', 'target-A·서버2', 'target-B·서버1', 'target-C·서버1'], stale: ['target-D·서버1'], targetNote: '기존 갱신·신규 추가', sideNote: '처리 행 sync_at = T', flow: '청크 → 대상 UPSERT', direction: 'left', move: expanded.map((value) => ({ from: 'chunk', to: 'target', fromValue: value, toValue: value })),
+  },
+  {
+    label: '다음 원본·청크', caption: '커서는 다음 원본 E로 이어집니다. 서버 매핑에 따라 E·서버1을 만들고 다음 청크에 전달합니다. 이전 청크 전체를 계속 쌓아 두지 않습니다.',
+    target: [...existing, 'A·서버2', 'C·서버1'], source: ['원본 E'], chunk: ['E·서버1'], emphasis: ['source-0', 'chunk-0'], stale: ['target-D·서버1'], targetNote: '앞 청크 반영됨', sideNote: '다음 청크 E·서버1', flow: '커서 → 다음 청크', direction: 'none',
+  },
+  {
+    label: '다음 청크 커밋', caption: '다음 청크의 E·서버1도 UPSERT하고 커밋합니다. 예시에서는 청크를 나눠 보여 주며 실제 청크 크기는 10,000건입니다.',
+    target: [...existing, 'A·서버2', 'C·서버1', 'E·서버1'], chunk: ['E·서버1'], emphasis: ['target-E·서버1'], stale: ['target-D·서버1'], targetNote: 'E 신규 반영', sideNote: '다음 청크 커밋', flow: '청크 → 대상 UPSERT', direction: 'left', move: [{ from: 'chunk', to: 'target', fromValue: 'E·서버1', toValue: 'E·서버1' }],
+  },
+  {
+    label: '커서 닫기', caption: '원본을 모두 읽은 뒤 ItemStream의 close()에서 커서와 연결을 닫습니다. 적재가 끝나도 기존 ACL D·서버1은 아직 남아 있습니다.',
+    target: [...existing, 'A·서버2', 'C·서버1', 'E·서버1'], stale: ['target-D·서버1'], targetNote: '적재 완료 · D 아직 유지', sideNote: 'close() · 커서 반납', flow: 'Reader 종료', direction: 'none',
+  },
+  {
+    label: '0건 가드', caption: '이번 실행의 수집 행이 한 건 이상인지 확인합니다. 0건이면 삭제를 중단합니다. 일부 원본이 누락된 경우까지 검출하는 장치는 아닙니다.',
+    target: [...existing, 'A·서버2', 'C·서버1', 'E·서버1'], emphasis: ['target-A·서버1', 'target-A·서버2', 'target-B·서버1', 'target-C·서버1', 'target-E·서버1'], stale: ['target-D·서버1'], targetNote: '이번 수집 행 존재 확인', sideNote: 'EXISTS · sync_at ≥ T', flow: '삭제 전 검사', direction: 'none',
+  },
+  {
+    label: '미수집 삭제', caption: '적재가 끝난 뒤 이번 실행에 수집되지 않은 D·서버1만 삭제합니다. 실제 삭제는 1만 건 단위로 반복하고, 이 그림의 한 블록은 실제 삭제 건수를 뜻하지 않습니다.',
+    target: ['A·서버1', 'B·서버1', 'A·서버2', 'C·서버1', 'E·서버1'], emphasis: ['target-A·서버1', 'target-A·서버2', 'target-B·서버1', 'target-C·서버1', 'target-E·서버1'], targetNote: '수집 ACL 유지 / D 삭제', sideNote: 'LIMIT 10,000 반복', flow: '미수집 행 정리', direction: 'none',
+  },
+  {
+    label: '최종 상태', caption: '대상 테이블을 통째로 비우는 단계 없이 동기화가 끝납니다. 연장 값과 최초 등록일은 유지하고, 수집되지 않은 행만 정리했습니다.',
+    target: ['A·서버1', 'B·서버1', 'A·서버2', 'C·서버1', 'E·서버1'], targetNote: '이번 수집 ACL 유지', sideNote: 'Job 종료', flow: '동기화 완료', direction: 'none',
+  },
+];
+
+const frames = mode === 'before' ? [...beforeCommon, ...beforeIncident] : after;
+const modeLabel = mode === 'before' ? '개선 전' : '개선 후';
+---
+
+<section class={`acl-flow-animation acl-flow-${mode}`} data-acl-flow-animation data-mode={mode} data-frames={JSON.stringify(frames)} data-normal-frames={mode === 'before' ? JSON.stringify(beforeNormal) : undefined} data-common-count={mode === 'before' ? beforeCommon.length : undefined} aria-label={`ACL 동기화 ${modeLabel} 흐름 애니메이션`} tabindex="0">
+  <div class="acl-flow-heading">
+    <div>
+      <p class="acl-flow-eyebrow">{mode === 'before' ? 'BEFORE · 백업 → 삭제 → 재적재' : 'AFTER · 스트리밍 → UPSERT → 정리'}</p>
+      <h3>{mode === 'before' ? '삭제 뒤 적재 실패가 만든 빈 구간' : '기존 ACL을 유지하며 한 청크씩 갱신'}</h3>
+    </div>
+    <span class="acl-flow-counter"><b data-counter>01 / {String(frames.length).padStart(2, '0')}</b><small data-current-label>{frames[0].label}</small></span>
+  </div>
+
+  {mode === 'before' && (
+    <div class="acl-flow-branch" role="group" aria-label="전체 펼치기 이후 실행 경로 선택">
+      <span>공통 단계 이후</span>
+      <button type="button" data-route="incident" aria-pressed="true">실제 장애 경로</button>
+      <button type="button" data-route="normal" aria-pressed="false">정상 실행 시 경로</button>
+    </div>
+  )}
+
+  <div class="acl-flow-diagram">
+    <div class="acl-flow-box acl-flow-target" data-target-box>
+      <div class="acl-flow-box-head"><span>대상 ACL</span><strong data-target-note>{frames[0].targetNote}</strong></div>
+      <div class="acl-flow-blocks" data-target></div>
+    </div>
+    <div class="acl-flow-arrow" aria-hidden="true"><strong data-flow-arrow>·</strong><small data-flow-label>{frames[0].flow}</small></div>
+    <div class="acl-flow-side">
+      {mode === 'before' ? (
+        <div class="acl-flow-box">
+          <div class="acl-flow-box-head"><span>백업 스냅샷</span><strong data-side-note>{frames[0].sideNote}</strong></div>
+          <div class="acl-flow-blocks" data-backup></div>
+        </div>
+      ) : (
+        <div class="acl-flow-box">
+          <div class="acl-flow-box-head"><span>Reader · 현재 처리분</span><strong data-side-note>{frames[0].sideNote}</strong></div>
+          <div class="acl-flow-source" data-source></div>
+          <div class="acl-flow-chunk-label">한 청크의 예시</div>
+          <div class="acl-flow-blocks" data-chunk></div>
+        </div>
+      )}
+      {mode === 'before' && <div class="acl-flow-source-box"><div class="acl-flow-box-head"><span>Reader · 힙</span><strong data-reader-note>{frames[0].readerNote}</strong></div><div class="acl-flow-source" data-source></div></div>}
+    </div>
+  </div>
+
+  <div class="acl-flow-steps" role="group" aria-label={`${modeLabel} 애니메이션 단계`}></div>
+  <p class="acl-flow-caption" data-caption aria-live="polite">{frames[0].caption}</p>
+  <div class="acl-flow-controls">
+    <div class="acl-flow-buttons">
+      <button type="button" data-action="previous" aria-label="이전 단계">←</button>
+      <button type="button" data-action="play" aria-label="애니메이션 재생">재생 ▶</button>
+      <button type="button" data-action="next" aria-label="다음 단계">→</button>
+    </div>
+    <div class="acl-flow-progress" aria-hidden="true"><span data-progress></span></div>
+  </div>
+  <p class="acl-flow-note">A~E와 표시된 블록 수는 흐름을 설명하는 예시입니다. 실제 처리 건수, 청크 크기 또는 메모리 사용량을 나타내지 않습니다.</p>
+</section>
+
+<script>
+  type Area = 'target' | 'backup' | 'source' | 'chunk';
+  type FlowFrame = {
+    label: string;
+    caption: string;
+    target: string[];
+    backup?: string[];
+    source?: string[];
+    chunk?: string[];
+    emphasis?: string[];
+    stale?: string[];
+    problem?: string[];
+    alert?: boolean;
+    targetNote: string;
+    sideNote: string;
+    readerNote?: string;
+    flow: string;
+    direction?: 'left' | 'right' | 'none';
+    move?: { from: Area; to: Area; fromValue: string; toValue: string }[];
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-acl-flow-animation]').forEach((animation) => {
+    const initialFrames = JSON.parse(animation.dataset.frames ?? '[]') as FlowFrame[];
+    if (!initialFrames.length) return;
+    const mode = animation.dataset.mode;
+    const commonCount = Number(animation.dataset.commonCount ?? 0);
+    const normalFrames = JSON.parse(animation.dataset.normalFrames ?? '[]') as FlowFrame[];
+    let frames = initialFrames;
+    let current = 0;
+    let timer: number | undefined;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const counter = animation.querySelector<HTMLElement>('[data-counter]');
+    const currentLabel = animation.querySelector<HTMLElement>('[data-current-label]');
+    const caption = animation.querySelector<HTMLElement>('[data-caption]');
+    const targetNote = animation.querySelector<HTMLElement>('[data-target-note]');
+    const sideNote = animation.querySelector<HTMLElement>('[data-side-note]');
+    const readerNote = animation.querySelector<HTMLElement>('[data-reader-note]');
+    const targetBox = animation.querySelector<HTMLElement>('[data-target-box]');
+    const flowArrow = animation.querySelector<HTMLElement>('[data-flow-arrow]');
+    const flowLabel = animation.querySelector<HTMLElement>('[data-flow-label]');
+    const progress = animation.querySelector<HTMLElement>('[data-progress]');
+    const playButton = animation.querySelector<HTMLButtonElement>('[data-action="play"]');
+    const previousButton = animation.querySelector<HTMLButtonElement>('[data-action="previous"]');
+    const nextButton = animation.querySelector<HTMLButtonElement>('[data-action="next"]');
+    const stepsContainer = animation.querySelector<HTMLElement>('.acl-flow-steps');
+    const routeButtons = Array.from(animation.querySelectorAll<HTMLButtonElement>('[data-route]'));
+    let steps: HTMLButtonElement[] = [];
+
+    const areaElement = (area: Area) => animation.querySelector<HTMLElement>('[data-' + area + ']');
+    const blockElement = (area: Area, value: string) =>
+      Array.from(areaElement(area)?.querySelectorAll<HTMLElement>('.acl-flow-block') ?? [])
+        .find((block) => block.textContent === value);
+
+    const pause = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      timer = undefined;
+      if (playButton) {
+        playButton.textContent = '재생 ▶';
+        playButton.setAttribute('aria-label', '애니메이션 재생');
+      }
+    };
+
+    const buildSteps = () => {
+      if (!stepsContainer) return;
+      stepsContainer.replaceChildren();
+      steps = frames.map((frame, index) => {
+        const button = document.createElement('button');
+        const number = document.createElement('span');
+        number.textContent = String(index + 1).padStart(2, '0');
+        button.type = 'button';
+        button.dataset.step = String(index);
+        button.append(number, document.createTextNode(frame.label));
+        button.addEventListener('click', () => { pause(); render(index); });
+        stepsContainer.append(button);
+        return button;
+      });
+    };
+
+    const ghost = (value: string, rect: DOMRect, end?: DOMRect) => {
+      if (reducedMotion.matches || rect.width === 0) return;
+      const block = document.createElement('span');
+      block.className = 'acl-flow-ghost';
+      block.textContent = value;
+      Object.assign(block.style, {
+        left: rect.left + 'px', top: rect.top + 'px',
+        width: rect.width + 'px', height: rect.height + 'px',
+      });
+      document.body.append(block);
+      const shiftX = end ? end.left - rect.left : 0;
+      const shiftY = end ? end.top - rect.top : 0;
+      block.animate(
+        [{ transform: 'translate(0, 0) scale(1)', opacity: .9 },
+         { transform: 'translate(' + shiftX + 'px, ' + shiftY + 'px) scale(' + (end ? 1 : .55) + ')', opacity: 0 }],
+        { duration: end ? 650 : 400, easing: 'ease-in-out' },
+      ).finished.finally(() => block.remove());
+    };
+
+    const renderBlocks = (area: Area, values: string[], frame: FlowFrame) => {
+      const container = areaElement(area);
+      if (!container) return;
+      const previous = new Set(Array.from(container.querySelectorAll('.acl-flow-block')).map((block) => block.textContent));
+      container.replaceChildren();
+      if (!values.length) {
+        const empty = document.createElement('span');
+        empty.className = 'acl-flow-empty';
+        empty.textContent = area === 'target' && frame.alert ? '0건 · 조회할 ACL 없음' : '이 단계의 데이터 없음';
+        container.append(empty);
+        return;
+      }
+      values.forEach((value, index) => {
+        const block = document.createElement('span');
+        block.className = 'acl-flow-block';
+        block.textContent = value;
+        const key = area + '-' + (area === 'source' || area === 'chunk' ? index : value);
+        if (frame.emphasis?.includes(key)) block.classList.add('is-current');
+        if (frame.stale?.includes(key)) block.classList.add('is-stale');
+        if (frame.problem?.includes(key)) block.classList.add('is-problem');
+        if (mode === 'after' && value === 'B·서버1' && area === 'target') block.classList.add('is-extended');
+        if (mode === 'after' && (value === 'C·서버1' || value === 'A·서버2' || value === 'E·서버1') && area === 'target') block.classList.add('is-new');
+        if (!previous.has(value) && !reducedMotion.matches) block.classList.add('is-entering');
+        container.append(block);
+      });
+    };
+
+    const render = (index: number, animate = true) => {
+      const next = Math.max(0, Math.min(index, frames.length - 1));
+      const frame = frames[next];
+      const moving = animate && next === current + 1 && !reducedMotion.matches;
+      const starts = moving ? (frame.move ?? []).map((move) => ({
+        move, rect: blockElement(move.from, move.fromValue)?.getBoundingClientRect(),
+      })) : [];
+      const exits = moving ? (['target', 'backup', 'source', 'chunk'] as Area[]).flatMap((area) => {
+        const nextValues = frame[area] ?? [];
+        return Array.from(areaElement(area)?.querySelectorAll<HTMLElement>('.acl-flow-block') ?? [])
+          .filter((block) => !nextValues.includes(block.textContent ?? ''))
+          .map((block) => ({ value: block.textContent ?? '', rect: block.getBoundingClientRect() }));
+      }) : [];
+
+      current = next;
+      renderBlocks('target', frame.target, frame);
+      renderBlocks('backup', frame.backup ?? [], frame);
+      renderBlocks('source', frame.source ?? [], frame);
+      renderBlocks('chunk', frame.chunk ?? [], frame);
+      if (counter) counter.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(frames.length).padStart(2, '0');
+      if (currentLabel) currentLabel.textContent = frame.label;
+      if (caption) caption.textContent = frame.caption;
+      if (targetNote) targetNote.textContent = frame.targetNote;
+      if (sideNote) sideNote.textContent = frame.sideNote;
+      if (readerNote) readerNote.textContent = frame.readerNote ?? '';
+      if (flowArrow) flowArrow.textContent = frame.direction === 'left' ? '←' : frame.direction === 'right' ? '→' : '·';
+      if (flowLabel) flowLabel.textContent = frame.flow;
+      targetBox?.classList.toggle('is-alert', !!frame.alert);
+      if (progress) progress.style.width = String(((current + 1) / frames.length) * 100) + '%';
+      steps.forEach((step, stepIndex) => {
+        if (stepIndex === current) step.setAttribute('aria-current', 'step');
+        else step.removeAttribute('aria-current');
+      });
+      if (previousButton) previousButton.disabled = current === 0;
+      if (nextButton) nextButton.disabled = current === frames.length - 1;
+      if (moving) {
+        starts.forEach(({ move, rect }) => {
+          const end = blockElement(move.to, move.toValue)?.getBoundingClientRect();
+          if (rect && end) ghost(move.toValue, rect, end);
+        });
+        exits.forEach(({ value, rect }) => ghost(value, rect));
+      }
+    };
+
+    const play = () => {
+      if (timer !== undefined) return;
+      if (current === frames.length - 1) render(0, false);
+      if (playButton) {
+        playButton.textContent = '일시정지 Ⅱ';
+        playButton.setAttribute('aria-label', '애니메이션 일시정지');
+      }
+      timer = window.setInterval(() => {
+        if (current >= frames.length - 1) { pause(); return; }
+        render(current + 1);
+        if (current === frames.length - 1) pause();
+      }, 2100);
+    };
+
+    routeButtons.forEach((button) => button.addEventListener('click', () => {
+      const route = button.dataset.route;
+      if (route === 'normal' && !normalFrames.length) return;
+      pause();
+      frames = route === 'normal'
+        ? [...initialFrames.slice(0, commonCount), ...normalFrames]
+        : initialFrames;
+      routeButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      buildSteps();
+      render(Math.min(current, commonCount - 1), false);
+    }));
+
+    previousButton?.addEventListener('click', () => { pause(); render(current - 1); });
+    nextButton?.addEventListener('click', () => { pause(); render(current + 1); });
+    playButton?.addEventListener('click', () => timer === undefined ? play() : pause());
+    animation.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') { event.preventDefault(); pause(); render(current + 1); }
+      if (event.key === 'ArrowLeft') { event.preventDefault(); pause(); render(current - 1); }
+      if (event.key === 'Home') { event.preventDefault(); pause(); render(0); }
+      if (event.key === 'End') { event.preventDefault(); pause(); render(frames.length - 1); }
+    });
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting || animation.closest<HTMLElement>('[role="tabpanel"]')?.hidden) pause();
+      }, { threshold: 0.1 });
+      observer.observe(animation);
+    }
+    buildSteps();
+    render(0, false);
+  });
+</script>

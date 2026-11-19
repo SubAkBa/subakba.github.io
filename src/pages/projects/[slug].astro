@@ -6,9 +6,11 @@ import Footer from '../../components/Footer.astro';
 import QueryCaseAnimation from '../../components/QueryCaseAnimation.astro';
 import ServiceUserAnimation from '../../components/ServiceUserAnimation.astro';
 import MailGroupAnimation from '../../components/MailGroupAnimation.astro';
+import AclSyncFlowAnimation from '../../components/AclSyncFlowAnimation.astro';
 import ParserFlowAnimation from '../../components/ParserFlowAnimation.astro';
 import '../../styles/parser-visuals.css';
 import '../../styles/sync-diagram.css';
+import '../../styles/acl-sync-flow.css';
 import { getPublishedProjects, type Project } from '../../lib/projects';
 
 interface Props {
@@ -35,8 +37,9 @@ const isQueryCaseStudy = project.id === 'mysql-query-performance-optimization';
 const isServiceUserStudy = project.id === 'service-user-query-optimization';
 const isCacheCaseStudy = project.id === 'caffeine-to-redis';
 const isMailGroupStudy = project.id === 'mail-group-batch-optimization';
+const isAclStudy = project.id === 'mysql-acl-sync-batch-improvement';
 const isSyncStudy = project.id === 'dbms-object-synchronization';
-const isStageStudy = isCacheCaseStudy || isMailGroupStudy || project.id === 'open-api-load-testing';
+const isStageStudy = isCacheCaseStudy || isMailGroupStudy || isAclStudy || project.id === 'open-api-load-testing';
 const tableOfContents = headings.filter(({ depth, slug }) =>
   depth === 2 ? (!isQueryCaseStudy || !slug.startsWith('case-')) : depth === 3 && !isQueryCaseStudy && !isStageStudy,
 );
@@ -61,7 +64,7 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
     </header>
 
     <div class="container project-reading-layout">
-      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-sync-study': isSyncStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}{project.id === 'antlr-ddl-parser' && <ParserFlowAnimation />}</article>
+      <article class:list={['project-prose', { 'project-prose-case-study': isQueryCaseStudy, 'project-prose-stage-study': isStageStudy, 'project-prose-sync-study': isSyncStudy, 'project-prose-cache-study': isCacheCaseStudy }]}><Content />{isServiceUserStudy && <ServiceUserAnimation />}{isMailGroupStudy && <MailGroupAnimation />}{isAclStudy && <div class="acl-animation-source"><AclSyncFlowAnimation mode="before" /><AclSyncFlowAnimation mode="after" /></div>}{project.id === 'antlr-ddl-parser' && <ParserFlowAnimation />}</article>
       {isQueryCaseStudy && (
         <div class="query-animation-source" aria-hidden="true">
           <QueryCaseAnimation caseNumber={1} />
@@ -327,11 +330,20 @@ const tableOfContents = headings.filter(({ depth, slug }) =>
 
     const stageArticle = document.querySelector<HTMLElement>('.project-prose-stage-study');
     if (stageArticle) {
-      const stageLabel = stageArticle.querySelector('[data-mail-group-animation]')
+      const stageLabel = stageArticle.querySelector('[data-acl-flow-animation]')
+        ? 'ACL 동기화 배치 개선 단계'
+        : stageArticle.querySelector('[data-mail-group-animation]')
         ? '메일 그룹 동기화 개선 단계'
         : stageArticle.classList.contains('project-prose-cache-study') ? '캐시 개선 단계' : '부하 테스트 개선 단계';
       setupTabs(stageArticle, ':scope > h2[id^="stage-"]', stageLabel, /^(Stage\s+\d+)\.\s*(.*)$/, true);
     }
+
+    document.getElementById('acl-before-animation-slot')?.replaceWith(
+      document.querySelector<HTMLElement>('[data-acl-flow-animation][data-mode="before"]') ?? document.createElement('span'),
+    );
+    document.getElementById('acl-after-animation-slot')?.replaceWith(
+      document.querySelector<HTMLElement>('[data-acl-flow-animation][data-mode="after"]') ?? document.createElement('span'),
+    );
 
     const mailGroupAnimation = document.querySelector<HTMLElement>('[data-mail-group-animation]');
     if (mailGroupAnimation) {
